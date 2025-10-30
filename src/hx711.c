@@ -1,35 +1,30 @@
+#include <driver/gpio.h>
+
 #include "hx711.h"
 
-/**
- * Replace with a function which takes the type `PIN` from the header and
- * returns its value as some integer type with a value of 1 or 0.
- */
-#define PIN_READ(pin) 1
-
-/**
- * Replave with a function which writes the given 0/1 integer value to the given
- * `PIN` pin.
- */
-#define PIN_WRITE(pin, i)
+void hx711_setup_pins(hx711_pins_t pins) {
+	ESP_ERROR_CHECK(gpio_set_direction(pins.clock_pin, GPIO_MODE_OUTPUT));
+    ESP_ERROR_CHECK(gpio_set_direction(pins.out_pin, GPIO_MODE_INPUT));
+}
 
 uint32_t hx711_read(hx711_pins_t pins) {
 	uint32_t value = 0;
 
-	PIN_WRITE(pin.clock, 0);
+	gpio_set_level(pins.clock_pin, 0);
 
 	// Wait for out pin to go low.
-	while (PIN_READ(pins.out));
+	while (gpio_get_level(pins.out_pin));
 
 	for (uint8_t i = 0; i < HX711_READ_BITS; i++) {
-		PIN_WRITE(pin.clock, 1);
-		value << 1;
-		PIN_WRITE(pin.clock, 0);
-		value |= PIN_READ(pin.out);
+		gpio_set_level(pins.clock_pin, 1);
+		value = value << 1;
+		gpio_set_level(pins.clock_pin, 0);
+		value |= gpio_get_level(pins.out_pin);
 	}
 
 	// Pulse puts out pin back to high, effectively reseting the state.
-	PIN_WRITE(pin.clock, 1);
-	PIN_WRITE(pin.clock, 0);
+	gpio_set_level(pins.clock_pin, 1);
+	gpio_set_level(pins.clock_pin, 0);
 
 	// Right now the gain for the next read would be 128.
 	// 

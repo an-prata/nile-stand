@@ -15,6 +15,11 @@ typedef struct {
 } hx711_pins_t;
 
 /**
+ * Configure the given pin set for use as an HX711 instance.
+ */
+void hx711_setup_pins(hx711_pins_t pins);
+
+/**
  * Read out a value from an HX711 connected with the given pin set.
  */
 uint32_t hx711_read(hx711_pins_t pins);
