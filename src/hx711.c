@@ -33,3 +33,9 @@ uint32_t hx711_read(hx711_pins_t pins) {
 
 	return value;
 }
+
+float hx711_read_grams(hx711_pins_t pins) {
+	uint32_t raw_value = hx711_read(pins);
+
+	return 50000.0 * (float)raw_value / (float)HX711_MAX_RAW_VALUE;
+}

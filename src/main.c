@@ -27,7 +27,7 @@ void app_main() {
     hx711_setup_pins(load_cell_pins);
     
     while (true) {
-        load_cell_field.value.field_value.floating = (float)hx711_read(load_cell_pins);
+        load_cell_field.value.field_value.floating = hx711_read_grams(load_cell_pins);
         update_field(load_cell_field);
 
         usleep(100 * 1000);
