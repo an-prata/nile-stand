@@ -5,8 +5,8 @@
 #include "field.h"
 #include "hx711.h"
 
-#define LOAD_CELL_PIN_CLOCK 26
-#define LOAD_CELL_PIN_DATA 27
+#define LOAD_CELL_PIN_CLOCK GPIO_NUM_26
+#define LOAD_CELL_PIN_DATA GPIO_NUM_27
 
 static const hx711_pins_t load_cell_pins = {
     .clock_pin = LOAD_CELL_PIN_CLOCK,
@@ -27,7 +27,7 @@ void app_main() {
     hx711_setup_pins(load_cell_pins);
     
     while (true) {
-        hx711_read(load_cell_pins);
+        load_cell_field.value.field_value.floating = (float)hx711_read(load_cell_pins);
         update_field(load_cell_field);
 
         usleep(100 * 1000);
