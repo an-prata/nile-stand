@@ -45,16 +45,11 @@ uint32_t hx711_read(hx711_pins_t pins) {
 void hx711_read_many(PIN clock, PIN* data_pins, uint32_t* values, uint8_t n) {
 	gpio_set_level(clock, 0);
 
-	while (true) {
-		for (uint8_t i = 0; i < n; i++) {
-			if (gpio_get_level(i)) {
-				goto wait;
-			}
+wait:
+	for (uint8_t i = 0; i < n; i++) {
+		if (gpio_get_level(i)) {
+			goto wait;
 		}
-
-		break;
-
-	wait:
 	}
 
 	for (uint8_t i = 0; i < HX711_READ_BITS; i++) {
