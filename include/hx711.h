@@ -21,13 +21,19 @@ typedef struct {
 void hx711_setup_pins(hx711_pins_t pins);
 
 /**
+ * Configure a clock pin and `n` data pins.
+ */
+void hx711_setup_pins_many(PIN clock, PIN* data_pins, uint8_t n);
+
+/**
  * Read out a value from an HX711 connected with the given pin set.
  */
 uint32_t hx711_read(hx711_pins_t pins);
 
 /**
- * Read out a value in grams from the HX711 at the given pin set.
+ * Takes a clock pin and an array of `n` data pins and reads out the values from
+ * all those data pins into the given `values` array.
  */
-float hx711_read_grams(hx711_pins_t pins);
+void hx711_read_many(PIN clock, PIN* data_pins, uint32_t* values, uint8_t n);
 
 #endif  /* HX711 */
