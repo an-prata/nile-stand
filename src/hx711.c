@@ -1,5 +1,6 @@
 #include <driver/gpio.h>
 
+#include <esp_log.h>
 #include "hx711.h"
 
 void hx711_setup_pins(hx711_pins_t pins) {
@@ -45,27 +46,27 @@ uint32_t hx711_read(hx711_pins_t pins) {
 void hx711_read_many(PIN clock, PIN* data_pins, uint32_t* values, uint8_t n) {
 	gpio_set_level(clock, 0);
 
+	for (int i = 0; i < n; i++) {
+		values[i] = 0;
+	}
+
 wait:
 	for (uint8_t i = 0; i < n; i++) {
-		if (gpio_get_level(i)) {
+		if (gpio_get_level(data_pins[i])) {
 			goto wait;
 		}
 	}
 
 	for (uint8_t i = 0; i < HX711_READ_BITS; i++) {
 		gpio_set_level(clock, 1);
+		gpio_set_level(clock, 0);
 		
 		for (uint8_t j = 0; j < n; j++) {
 			values[j] = values[j] << 1;
-		}
-
-		gpio_set_level(clock, 0);
-
-		for (uint8_t j = 0; j < n; j++) {
-			values[j] |= gpio_get_level(data_pins);
+			values[j] |= gpio_get_level(data_pins[j]);
 		}
 	}
-
+	
 	gpio_set_level(clock, 1);
 	gpio_set_level(clock, 0);
 }

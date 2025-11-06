@@ -2,25 +2,27 @@
 #include <driver/gpio.h>
 #include <esp_task_wdt.h>
 #include <esp_timer.h>
+#include <unistd.h>
 
 #include "field.h"
 #include "hx711.h"
 
 #define MICROS_TO_SECONDS 0.000001
 
-#define LOAD_CELL_CLOCK 11
-#define LOAD_CELL_DATA_0 12
-#define LOAD_CELL_DATA_1 13
-#define LOAD_CELL_DATA_2 14
-#define LOAD_CELL_DATA_3 15
-#define LOAD_CELL_COUNT 4
+#define LOAD_CELL_CLOCK GPIO_NUM_17
+#define LOAD_CELL_DATA_0 GPIO_NUM_16
+#define LOAD_CELL_DATA_1 GPIO_NUM_26
+//#define LOAD_CELL_DATA_2 GPIO_NUM_27
+//#define LOAD_CELL_DATA_3 GPIO_NUM_14
+//#define LOAD_CELL_COUNT 4
+#define LOAD_CELL_COUNT 2
 
-static const uint32_t load_cell_measurements[LOAD_CELL_COUNT];
+static uint32_t load_cell_measurements[LOAD_CELL_COUNT] = { 0 };
 static const PIN load_cell_data_pins[LOAD_CELL_COUNT] = {
     LOAD_CELL_DATA_0,
     LOAD_CELL_DATA_1,
-    LOAD_CELL_DATA_2,
-    LOAD_CELL_DATA_3
+    //LOAD_CELL_DATA_2,
+    //LOAD_CELL_DATA_3
 };
 
 static uint32_t scale_0_measurement = 0;
@@ -47,7 +49,7 @@ static field_t scale_0_rate_field = {
     }
 };
 
-static uint32_t scale_1_measurement = 0;
+/* static uint32_t scale_1_measurement = 0;
 static double scale_1_value = 0.0;
 static double scale_1_value_rate = 0.0;
 
@@ -69,7 +71,7 @@ static field_t scale_1_rate_field = {
             .floating = 0.0
         }
     }
-};
+}; */
 
 uint64_t time_us_prev = 0;
 uint64_t time_us_delta = 0;
@@ -87,8 +89,6 @@ double apply_scale_0_calibration(uint32_t measurement);
 double apply_scale_1_calibration(uint32_t measurement);
 
 void app_main() {
-    ESP_ERROR_CHECK(esp_timer_init());
-
     hx711_setup_pins_many(LOAD_CELL_CLOCK, load_cell_data_pins, LOAD_CELL_COUNT);
     
     while (true) {
@@ -103,29 +103,29 @@ void app_main() {
         scale_0_value_rate = (new_scale_0_value - scale_0_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
         scale_0_value = new_scale_0_value;
 
-        scale_1_measurement = load_cell_measurements[2] + load_cell_measurements[3];
+        /* scale_1_measurement = load_cell_measurements[2] + load_cell_measurements[3];
         double new_scale_1_value = apply_scale_1_calibration(scale_1_measurement);
         scale_1_value_rate = (new_scale_1_value - scale_1_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
-        scale_1_value = new_scale_1_value;
+        scale_1_value = new_scale_1_value; */
 
-        scale_0_field.value.field_value.floating = scale_0_value;
+        scale_0_field.value.field_value.floating = new_scale_0_value;
         scale_0_rate_field.value.field_value.floating = scale_0_value_rate;
 
-        scale_1_field.value.field_value.floating = scale_1_value;
-        scale_1_rate_field.value.field_value.floating = scale_1_value_rate;
+        /* scale_1_field.value.field_value.floating = scale_1_value;
+        scale_1_rate_field.value.field_value.floating = scale_1_value_rate; */
 
         update_field(scale_0_field);
         update_field(scale_0_rate_field);
         
-        update_field(scale_1_field);
-        update_field(scale_1_rate_field);
+        /* update_field(scale_1_field);
+        update_field(scale_1_rate_field); */
 
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
 double apply_scale_0_calibration(uint32_t measurement) {
-    return (double)measurement;
+    return ((double)measurement - 1053966.648) / 90.53951915;
 }
 
 double apply_scale_1_calibration(uint32_t measurement) {
