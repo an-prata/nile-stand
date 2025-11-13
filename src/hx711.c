@@ -1,6 +1,6 @@
 #include <driver/gpio.h>
-
 #include <esp_log.h>
+
 #include "hx711.h"
 
 void hx711_setup_pins(hx711_pins_t pins) {
