@@ -9,6 +9,7 @@
 #include "hx711.h"
 #include "i2c.h"
 #include "ads111x.h"
+#include "solenoid_controller.h"
 
 #define MICROS_TO_SECONDS 0.000001
 
@@ -18,6 +19,11 @@
 #define LOAD_CELL_DATA_2 GPIO_NUM_27
 #define LOAD_CELL_DATA_3 GPIO_NUM_14
 #define LOAD_CELL_COUNT 4
+
+static solenoid_controller_pins_t solenoid_pins = {
+    .clock = GPIO_NUM_0,
+    .data = GPIO_NUM_0,
+};
 
 static uint32_t load_cell_measurements[LOAD_CELL_COUNT] = { 0 };
 static const gpio_num_t load_cell_data_pins[LOAD_CELL_COUNT] = {
@@ -125,8 +131,13 @@ static field_t pressure_transducer_a3_field = {
     }
 };
 
-uint64_t time_us_prev = 0;
-uint64_t time_us_delta = 0;
+#define RX_BUF_LEN 256
+
+char rx_buf[RX_BUF_LEN] = { '\0' };
+size_t rx_idx = 0;
+
+static uint64_t time_us_prev = 0;
+static uint64_t time_us_delta = 0;
 
 /**
  * Apply the calibration of scale 0 to the given scale measurement, returning a
@@ -140,10 +151,18 @@ double apply_scale_0_calibration(uint32_t measurement);
  */
 double apply_scale_1_calibration(uint32_t measurement);
 
+/**
+ * Set a valve, open is `true`, closed is `false`.
+ */
+void set_valve(valve_e valve, bool state);
+
 void app_main() {
     i2c_init();
     ads111x_device_add();
     hx711_setup_pins_many(LOAD_CELL_CLOCK, load_cell_data_pins, LOAD_CELL_COUNT);
+
+    command_reader_t command_reader = make_command_reader(NULL);
+    command_t command;
     
     while (true) {
         // Timing/clock
@@ -196,7 +215,36 @@ void app_main() {
         update_field(pressure_transducer_a2_field);
         update_field(pressure_transducer_a3_field);
 
-        vTaskDelay(pdMS_TO_TICKS(50));
+        // TODO: Give back info about valves!!
+
+        // Handle commands
+
+        rx_idx += fread(rx_buf, sizeof(char), RX_BUF_LEN, stdin);
+        command_reader_buffer(&command_reader, rx_buf);
+
+        while (command_reader_read(&command_reader, &command) == 0) {
+            switch (command.cmd_type) {
+                case COMMAND_OPEN:
+                    set_valve(command.cmd_valve, true);
+                    break;
+                case COMMAND_CLOSE:
+                    set_valve(command.cmd_valve, false);
+                    break;
+                case COMMAND_IGNITE:
+                    // TODO: Handle ignition!!!!
+                    break;
+            }
+        }
+
+        memset(rx_buf, '\0', RX_BUF_LEN);
+        rx_idx = 0;
+
+        // Update the solenoid controller
+
+        solenoid_controller_push(solenoid_pins);
+
+        // Delay so the watchdog doesn't bite
+        vTaskDelay(10);
     }
 }
 
@@ -206,4 +254,35 @@ double apply_scale_0_calibration(uint32_t measurement) {
 
 double apply_scale_1_calibration(uint32_t measurement) {
     return (double)measurement;
+}
+
+void set_valve(valve_e valve, bool state) {
+    // Handle the weird double action valve.
+    if (valve == NP4 && state) {
+        solenoid_controller_open(SOLENOID_6);
+        solenoid_controller_close(SOLENOID_7);
+        return;
+    } else if (valve == NP4 && !state) {
+        solenoid_controller_close(SOLENOID_6);
+        solenoid_controller_open(SOLENOID_7);
+        return;
+    }
+
+    solenoid_controller_state_t solenoid;
+
+    switch (valve) {
+        case NP1: solenoid = SOLENOID_0; break;
+        case NP2: solenoid = SOLENOID_1; break;
+        case NP3: solenoid = SOLENOID_2; break;
+        case IP1: solenoid = SOLENOID_3; break;
+        case IP2: solenoid = SOLENOID_4; break;
+        case IP3: solenoid = SOLENOID_5; break;
+        default: return;
+    }
+
+    if (state) {
+        solenoid_controller_open(solenoid);
+    } else {
+        solenoid_controller_close(solenoid);
+    }
 }
