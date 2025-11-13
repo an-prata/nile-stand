@@ -131,7 +131,79 @@ static field_t pressure_transducer_a3_field = {
     }
 };
 
+static field_t valve_np1_field = {
+    .name = "NP1",
+    .value = {
+        .field_type = FIELD_TYPE_BOOLEAN,
+        .field_value = {
+            .boolean = false
+        }
+    }
+};
+
+static field_t valve_np2_field = {
+    .name = "NP2",
+    .value = {
+        .field_type = FIELD_TYPE_BOOLEAN,
+        .field_value = {
+            .boolean = false
+        }
+    }
+};
+
+static field_t valve_np3_field = {
+    .name = "NP3",
+    .value = {
+        .field_type = FIELD_TYPE_BOOLEAN,
+        .field_value = {
+            .boolean = false
+        }
+    }
+};
+
+static field_t valve_np4_field = {
+    .name = "NP4",
+    .value = {
+        .field_type = FIELD_TYPE_BOOLEAN,
+        .field_value = {
+            .boolean = false
+        }
+    }
+};
+
+static field_t valve_ip1_field = {
+    .name = "IP1",
+    .value = {
+        .field_type = FIELD_TYPE_BOOLEAN,
+        .field_value = {
+            .boolean = false
+        }
+    }
+};
+
+static field_t valve_ip2_field = {
+    .name = "IP2",
+    .value = {
+        .field_type = FIELD_TYPE_BOOLEAN,
+        .field_value = {
+            .boolean = false
+        }
+    }
+};
+
+static field_t valve_ip3_field = {
+    .name = "IP3",
+    .value = {
+        .field_type = FIELD_TYPE_BOOLEAN,
+        .field_value = {
+            .boolean = false
+        }
+    }
+};
+
 #define RX_BUF_LEN 256
+
+static bool double_action_valve_triggered = false;
 
 char rx_buf[RX_BUF_LEN] = { '\0' };
 size_t rx_idx = 0;
@@ -202,6 +274,24 @@ void app_main() {
         scale_rates_ratio.value.field_value.floating = scale_0_value_rate / scale_1_value_rate;
         */
 
+        // Update values of valves
+
+        solenoid_controller_state_t solenoid_states = solenoid_controller_get();
+
+        valve_np1_field.value.field_value.boolean = (solenoid_states & SOLENOID_0) > 0;
+        valve_np2_field.value.field_value.boolean = (solenoid_states & SOLENOID_1) > 0;
+        valve_np3_field.value.field_value.boolean = (solenoid_states & SOLENOID_2) > 0;
+
+        if (solenoid_states & SOLENOID_6) {
+            valve_np1_field.value.field_value.boolean = true;
+        } else if (solenoid_states & SOLENOID_7) {
+            valve_np1_field.value.field_value.boolean = false;
+        }
+        
+        valve_ip1_field.value.field_value.boolean = (solenoid_states & SOLENOID_3) > 0;
+        valve_ip2_field.value.field_value.boolean = (solenoid_states & SOLENOID_4) > 0;
+        valve_ip3_field.value.field_value.boolean = (solenoid_states & SOLENOID_5) > 0;
+
         // Field updates
 
         update_field(scale_0_field);
@@ -214,6 +304,18 @@ void app_main() {
         update_field(pressure_transducer_a1_field);
         update_field(pressure_transducer_a2_field);
         update_field(pressure_transducer_a3_field);
+
+        update_field(valve_np1_field);
+        update_field(valve_np2_field);
+        update_field(valve_np3_field);
+
+        if (double_action_valve_triggered) {
+            update_field(valve_np4_field);
+        }
+
+        update_field(valve_ip1_field);
+        update_field(valve_ip2_field);
+        update_field(valve_ip3_field);
 
         // TODO: Give back info about valves!!
 
@@ -261,10 +363,12 @@ void set_valve(valve_e valve, bool state) {
     if (valve == NP4 && state) {
         solenoid_controller_open(SOLENOID_6);
         solenoid_controller_close(SOLENOID_7);
+        double_action_valve_triggered = true;
         return;
     } else if (valve == NP4 && !state) {
         solenoid_controller_close(SOLENOID_6);
         solenoid_controller_open(SOLENOID_7);
+        double_action_valve_triggered = true;
         return;
     }
 
