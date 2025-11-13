@@ -2,6 +2,7 @@
 #define HX711_H
 
 #include <stdint.h>
+#include <driver/gpio.h>
 
 #define HX711_READ_BITS 24
 #define HX711_MAX_RAW_VALUE (uint32_t)0x00FFFFFF
