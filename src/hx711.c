@@ -8,7 +8,7 @@ void hx711_setup_pins(hx711_pins_t pins) {
     ESP_ERROR_CHECK(gpio_set_direction(pins.out_pin, GPIO_MODE_INPUT));
 }
 
-void hx711_setup_pins_many(PIN clock, const PIN* data_pins, uint8_t n) {
+void hx711_setup_pins_many(gpio_num_t clock, const gpio_num_t* data_pins, uint8_t n) {
 	ESP_ERROR_CHECK(gpio_set_direction(clock, GPIO_MODE_OUTPUT));
 	
 	for (uint8_t i = 0; i < n; i++) {
@@ -43,7 +43,7 @@ uint32_t hx711_read(hx711_pins_t pins) {
 	return value;
 }
 
-void hx711_read_many(PIN clock, const PIN* data_pins, uint32_t* values, uint8_t n) {
+void hx711_read_many(gpio_num_t clock, const gpio_num_t* data_pins, uint32_t* values, uint8_t n) {
 	gpio_set_level(clock, 0);
 
 	for (int i = 0; i < n; i++) {

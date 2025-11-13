@@ -20,7 +20,7 @@
 #define LOAD_CELL_COUNT 4
 
 static uint32_t load_cell_measurements[LOAD_CELL_COUNT] = { 0 };
-static const PIN load_cell_data_pins[LOAD_CELL_COUNT] = {
+static const gpio_num_t load_cell_data_pins[LOAD_CELL_COUNT] = {
     LOAD_CELL_DATA_0,
     LOAD_CELL_DATA_1,
     LOAD_CELL_DATA_2,
