@@ -1,7 +1,9 @@
 #include "field.h"
+#include "uart.h"
 
 // Replace the `printf` with a call to a function which prints over UART.
-#define SERIAL_PRINT(s) printf("%s", s)
+//#define SERIAL_PRINT(s) printf("%s", s)
+#define SERIAL_PRINT(s) uart_send(s)
 #define SERIAL_PRINT_BUFFER_LEN 128
 
 #define COMMAND_MSG_OPEN "OPEN"

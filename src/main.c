@@ -10,6 +10,10 @@
 #include "i2c.h"
 #include "ads111x.h"
 #include "solenoid_controller.h"
+#include "uart.h"
+
+#define SERIAL_UART
+//#define SERIAL_USB
 
 #define MICROS_TO_SECONDS 0.000001
 
@@ -17,9 +21,9 @@
 #define LOAD_CELL_DATA_0 GPIO_NUM_16
 #define LOAD_CELL_DATA_1 GPIO_NUM_26
 #define LOAD_CELL_DATA_2 GPIO_NUM_27
-#define LOAD_CELL_DATA_3 GPIO_NUM_14
-#define LOAD_CELL_COUNT 4
+#define LOAD_CELL_COUNT 1
 
+/*
 static solenoid_controller_pins_t solenoid_pins = {
     .clock = GPIO_NUM_0,
     .data = GPIO_NUM_0,
@@ -29,9 +33,9 @@ static uint32_t load_cell_measurements[LOAD_CELL_COUNT] = { 0 };
 static const gpio_num_t load_cell_data_pins[LOAD_CELL_COUNT] = {
     LOAD_CELL_DATA_0,
     LOAD_CELL_DATA_1,
-    LOAD_CELL_DATA_2,
-    LOAD_CELL_DATA_3
+    LOAD_CELL_DATA_2
 };
+*/
 
 static uint32_t scale_0_measurement = 0;
 static double scale_0_value = 0.0;
@@ -229,14 +233,18 @@ double apply_scale_1_calibration(uint32_t measurement);
 void set_valve(valve_e valve, bool state);
 
 void app_main() {
-    i2c_init();
-    ads111x_device_add();
-    hx711_setup_pins_many(LOAD_CELL_CLOCK, load_cell_data_pins, LOAD_CELL_COUNT);
+    sleep(2);
+    uart_init();
+    //i2c_init();
+    //ads111x_device_add();
+    //hx711_setup_pins_many(LOAD_CELL_CLOCK, load_cell_data_pins, LOAD_CELL_COUNT);
 
     command_reader_t command_reader = make_command_reader(NULL);
     command_t command;
     
+    printf("Starting\n");
     while (true) {
+        printf("Looped\n");
         // Timing/clock
 
         uint64_t current_time = esp_timer_get_time();
@@ -245,6 +253,7 @@ void app_main() {
 
         // PTs
 
+        /*
         pressure_transducer_a0_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A0));
         pressure_transducer_a1_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A1));
         pressure_transducer_a2_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A2));
@@ -252,7 +261,6 @@ void app_main() {
 
         // Load cells
 
-        /*
         hx711_read_many(LOAD_CELL_CLOCK, load_cell_data_pins, load_cell_measurements, LOAD_CELL_COUNT);
 
         scale_0_measurement = load_cell_measurements[0] + load_cell_measurements[1];
@@ -260,7 +268,9 @@ void app_main() {
         scale_0_value_rate = (new_scale_0_value - scale_0_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
         scale_0_value = new_scale_0_value;
 
-        scale_1_measurement = load_cell_measurements[2] + load_cell_measurements[3];
+        //scale_1_measurement = load_cell_measurements[2];
+        scale_1_measurement = load_cell_measurements[0];
+        double new_scale_1_value = scale_1_measurement;
         double new_scale_1_value = apply_scale_1_calibration(scale_1_measurement);
         scale_1_value_rate = (new_scale_1_value - scale_1_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
         scale_1_value = new_scale_1_value;
@@ -272,7 +282,6 @@ void app_main() {
         scale_1_rate_field.value.field_value.floating = scale_1_value_rate;
 
         scale_rates_ratio.value.field_value.floating = scale_0_value_rate / scale_1_value_rate;
-        */
 
         // Update values of valves
 
@@ -281,16 +290,16 @@ void app_main() {
         valve_np1_field.value.field_value.boolean = (solenoid_states & SOLENOID_0) > 0;
         valve_np2_field.value.field_value.boolean = (solenoid_states & SOLENOID_1) > 0;
         valve_np3_field.value.field_value.boolean = (solenoid_states & SOLENOID_2) > 0;
+        valve_np4_field.value.field_value.boolean = (solenoid_states & SOLENOID_3) > 0;
 
         if (solenoid_states & SOLENOID_6) {
-            valve_np1_field.value.field_value.boolean = true;
+            valve_ip1_field.value.field_value.boolean = true;
         } else if (solenoid_states & SOLENOID_7) {
-            valve_np1_field.value.field_value.boolean = false;
+            valve_ip1_field.value.field_value.boolean = false;
         }
         
-        valve_ip1_field.value.field_value.boolean = (solenoid_states & SOLENOID_3) > 0;
         valve_ip2_field.value.field_value.boolean = (solenoid_states & SOLENOID_4) > 0;
-        valve_ip3_field.value.field_value.boolean = (solenoid_states & SOLENOID_5) > 0;
+        valve_ip3_field.value.field_value.boolean = (solenoid_states & SOLENOID_5) > 0; */
 
         // Field updates
 
@@ -308,20 +317,25 @@ void app_main() {
         update_field(valve_np1_field);
         update_field(valve_np2_field);
         update_field(valve_np3_field);
+        update_field(valve_np4_field);
 
         if (double_action_valve_triggered) {
-            update_field(valve_np4_field);
+            update_field(valve_ip1_field);
         }
 
-        update_field(valve_ip1_field);
         update_field(valve_ip2_field);
         update_field(valve_ip3_field);
 
-        // TODO: Give back info about valves!!
-
         // Handle commands
 
+#ifdef SERIAL_USB
         rx_idx += fread(rx_buf, sizeof(char), RX_BUF_LEN, stdin);
+#endif  /* SERIAL_USB */
+
+#ifdef SERIAL_UART
+        rx_idx += uart_recieve(rx_buf, RX_BUF_LEN);
+#endif  /* SERIAL_UART */
+
         command_reader_buffer(&command_reader, rx_buf);
 
         while (command_reader_read(&command_reader, &command) == 0) {
@@ -343,7 +357,7 @@ void app_main() {
 
         // Update the solenoid controller
 
-        solenoid_controller_push(solenoid_pins);
+        //solenoid_controller_push(solenoid_pins);
 
         // Delay so the watchdog doesn't bite
         vTaskDelay(10);
@@ -360,12 +374,12 @@ double apply_scale_1_calibration(uint32_t measurement) {
 
 void set_valve(valve_e valve, bool state) {
     // Handle the weird double action valve.
-    if (valve == NP4 && state) {
+    if (valve == IP1 && state) {
         solenoid_controller_open(SOLENOID_6);
         solenoid_controller_close(SOLENOID_7);
         double_action_valve_triggered = true;
         return;
-    } else if (valve == NP4 && !state) {
+    } else if (valve == IP1 && !state) {
         solenoid_controller_close(SOLENOID_6);
         solenoid_controller_open(SOLENOID_7);
         double_action_valve_triggered = true;
@@ -378,9 +392,11 @@ void set_valve(valve_e valve, bool state) {
         case NP1: solenoid = SOLENOID_0; break;
         case NP2: solenoid = SOLENOID_1; break;
         case NP3: solenoid = SOLENOID_2; break;
-        case IP1: solenoid = SOLENOID_3; break;
+        case NP4: solenoid = SOLENOID_3; break;
+
         case IP2: solenoid = SOLENOID_4; break;
         case IP3: solenoid = SOLENOID_5; break;
+
         default: return;
     }
 

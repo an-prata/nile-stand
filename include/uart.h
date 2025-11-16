@@ -4,14 +4,14 @@
 #include <stdlib.h>
 
 #define UART_BUFFER_SIZE (1024 * 2)  /* 2KB */
-#define UART_QUEUE_SIZE 12
+#define UART_QUEUE_SIZE 10
 #define UART_BAUD_RATE 115200
 
 /* Default RX/TX pins for UART 0 */
 
-#define UART_NUM UART_NUM_0
-#define UART_PIN_TX 1
-#define UART_PIN_RX 3
+#define UART_NUM UART_NUM_2
+#define UART_PIN_TX 4
+#define UART_PIN_RX 5
 
 /**
  * Initialize UART.
