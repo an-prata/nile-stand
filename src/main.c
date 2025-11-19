@@ -233,16 +233,14 @@ void set_valve(valve_e valve, bool state);
 void app_main() {
     sleep(2);
     uart_init();
-    //i2c_init();
-    //ads111x_device_add();
-    //hx711_setup_pins_many(LOAD_CELL_CLOCK, load_cell_data_pins, LOAD_CELL_COUNT);
+    i2c_init();
+    ads111x_device_add();
+    hx711_setup_pins_many(LOAD_CELL_CLOCK, load_cell_data_pins, LOAD_CELL_COUNT);
 
     command_reader_t command_reader = make_command_reader(NULL);
     command_t command;
     
-    printf("Starting\n");
     while (true) {
-        printf("Looped\n");
         // Timing/clock
 
         uint64_t current_time = esp_timer_get_time();
