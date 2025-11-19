@@ -23,7 +23,6 @@
 #define LOAD_CELL_DATA_2 GPIO_NUM_27
 #define LOAD_CELL_COUNT 1
 
-/*
 static solenoid_controller_pins_t solenoid_pins = {
     .clock = GPIO_NUM_0,
     .data = GPIO_NUM_0,
@@ -35,7 +34,6 @@ static const gpio_num_t load_cell_data_pins[LOAD_CELL_COUNT] = {
     LOAD_CELL_DATA_1,
     LOAD_CELL_DATA_2
 };
-*/
 
 static uint32_t scale_0_measurement = 0;
 static double scale_0_value = 0.0;
@@ -253,7 +251,6 @@ void app_main() {
 
         // PTs
 
-        /*
         pressure_transducer_a0_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A0));
         pressure_transducer_a1_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A1));
         pressure_transducer_a2_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A2));
@@ -268,8 +265,7 @@ void app_main() {
         scale_0_value_rate = (new_scale_0_value - scale_0_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
         scale_0_value = new_scale_0_value;
 
-        //scale_1_measurement = load_cell_measurements[2];
-        scale_1_measurement = load_cell_measurements[0];
+        scale_1_measurement = load_cell_measurements[2];
         double new_scale_1_value = scale_1_measurement;
         double new_scale_1_value = apply_scale_1_calibration(scale_1_measurement);
         scale_1_value_rate = (new_scale_1_value - scale_1_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
@@ -299,7 +295,7 @@ void app_main() {
         }
         
         valve_ip2_field.value.field_value.boolean = (solenoid_states & SOLENOID_4) > 0;
-        valve_ip3_field.value.field_value.boolean = (solenoid_states & SOLENOID_5) > 0; */
+        valve_ip3_field.value.field_value.boolean = (solenoid_states & SOLENOID_5) > 0;
 
         // Field updates
 
@@ -357,7 +353,7 @@ void app_main() {
 
         // Update the solenoid controller
 
-        //solenoid_controller_push(solenoid_pins);
+        solenoid_controller_push(solenoid_pins);
 
         // Delay so the watchdog doesn't bite
         vTaskDelay(10);
@@ -369,7 +365,7 @@ double apply_scale_0_calibration(uint32_t measurement) {
 }
 
 double apply_scale_1_calibration(uint32_t measurement) {
-    return (double)measurement;
+    return ((double)measurement - 103290.83242068) / 31.9587971598634;
 }
 
 void set_valve(valve_e valve, bool state) {
