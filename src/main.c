@@ -264,7 +264,6 @@ void app_main() {
         scale_0_value = new_scale_0_value;
 
         scale_1_measurement = load_cell_measurements[2];
-        double new_scale_1_value = scale_1_measurement;
         double new_scale_1_value = apply_scale_1_calibration(scale_1_measurement);
         scale_1_value_rate = (new_scale_1_value - scale_1_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
         scale_1_value = new_scale_1_value;
