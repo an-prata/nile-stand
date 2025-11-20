@@ -166,6 +166,11 @@ static field_t pressure_transducer_a3_field = {
     }
 };
 
+
+/**
+ * Valve fields
+ */
+
 static field_t valve_np1_field = {
     .name = "NP1",
     .value = {
