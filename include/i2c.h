@@ -4,6 +4,10 @@
 #include <sdkconfig.h>
 #include <driver/i2c_master.h>
 
+#define I2C_NUM I2C_NUM_0
+#define I2C_CLOCK GPIO_NUM_22
+#define I2C_DATA GPIO_NUM_21 
+
 /**
  * Initialize the I2C bus.
  */

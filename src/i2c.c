@@ -7,9 +7,9 @@ static i2c_master_bus_handle_t handle;
 
 void i2c_init(void) {
     i2c_master_bus_config_t bus_config = {
-        .i2c_port = I2C_NUM_0,
-        .sda_io_num = GPIO_NUM_21,
-        .scl_io_num = GPIO_NUM_22,
+        .i2c_port = I2C_NUM,
+        .sda_io_num = I2C_DATA,
+        .scl_io_num = I2C_CLOCK,
         .clk_source = I2C_CLK_SRC_DEFAULT,
         .glitch_ignore_cnt = 7,
         .flags.enable_internal_pullup = true,

@@ -6,41 +6,32 @@
 
 #include "field.h"
 #include "pressure_transducer.h"
-#include "hx711.h"
 #include "i2c.h"
 #include "ads111x.h"
 #include "solenoid_controller.h"
 #include "uart.h"
+#include "scales.h"
 
 #define SERIAL_UART
 //#define SERIAL_USB
 
 #define MICROS_TO_SECONDS 0.000001
 
-#define LOAD_CELL_CLOCK GPIO_NUM_17
-#define LOAD_CELL_DATA_0 GPIO_NUM_16
-#define LOAD_CELL_DATA_1 GPIO_NUM_26
-#define LOAD_CELL_DATA_2 GPIO_NUM_27
-#define LOAD_CELL_COUNT 1
-
 static solenoid_controller_pins_t solenoid_pins = {
-    .clock = GPIO_NUM_0,
-    .data = GPIO_NUM_0,
+    .clock = GPIO_NUM_16,
+    .data = GPIO_NUM_17,
 };
 
-static uint32_t load_cell_measurements[LOAD_CELL_COUNT] = { 0 };
-static const gpio_num_t load_cell_data_pins[LOAD_CELL_COUNT] = {
-    LOAD_CELL_DATA_0,
-    LOAD_CELL_DATA_1,
-    LOAD_CELL_DATA_2
-};
 
-static uint32_t scale_0_measurement = 0;
-static double scale_0_value = 0.0;
-static double scale_0_value_rate = 0.0;
+/*
+ * Ox Scale
+ */
 
-static field_t scale_0_field = {
-    .name = "Scale 0",
+static double scale_ox_value = 0.0;
+static double scale_ox_value_rate = 0.0;
+
+static field_t scale_ox_field = {
+    .name = "Scale Ox",
     .value = {
         .field_type = FIELD_TYPE_FLOAT,
         .field_value = {
@@ -49,8 +40,8 @@ static field_t scale_0_field = {
     }
 };
 
-static field_t scale_0_rate_field = {
-    .name = "Scale 0 Rate",
+static field_t scale_ox_rate_field = {
+    .name = "Scale Ox Rate",
     .value = {
         .field_type = FIELD_TYPE_FLOAT,
         .field_value = {
@@ -59,12 +50,16 @@ static field_t scale_0_rate_field = {
     }
 };
 
-static uint32_t scale_1_measurement = 0;
-static double scale_1_value = 0.0;
-static double scale_1_value_rate = 0.0;
 
-static field_t scale_1_field = {
-    .name = "Scale 1",
+/*
+ * Fuel Scale
+ */
+
+static double scale_fuel_value = 0.0;
+static double scale_fuel_value_rate = 0.0;
+
+static field_t scale_fuel_field = {
+    .name = "Scale Fuel",
     .value = {
         .field_type = FIELD_TYPE_FLOAT,
         .field_value = {
@@ -73,8 +68,8 @@ static field_t scale_1_field = {
     }
 };
 
-static field_t scale_1_rate_field = {
-    .name = "Scale 1 Rate",
+static field_t scale_fuel_rate_field = {
+    .name = "Scale Fuel Rate",
     .value = {
         .field_type = FIELD_TYPE_FLOAT,
         .field_value = {
@@ -83,8 +78,13 @@ static field_t scale_1_rate_field = {
     }
 };
 
-static field_t scale_rates_ratio = {
-    .name = "Scale Rates Ratio",
+
+/*
+ * Ox/Fuel Ratio
+ */
+
+static field_t ox_fuel_ratio_field = {
+    .name = "Scale Ox/Fuel Ratio",
     .value = {
         .field_type = FIELD_TYPE_FLOAT,
         .field_value = {
@@ -92,6 +92,39 @@ static field_t scale_rates_ratio = {
         }
     }
 };
+
+
+/*
+ * Thrust Scale
+ */
+
+static double scale_thrust_value = 0.0;
+static double scale_thrust_value_rate = 0.0;
+
+static field_t scale_thrust_field = {
+    .name = "Scale Thrust",
+    .value = {
+        .field_type = FIELD_TYPE_FLOAT,
+        .field_value = {
+            .floating = 0.0
+        }
+    }
+};
+
+static field_t scale_thrust_rate_field = {
+    .name = "Scale Thrust Rate",
+    .value = {
+        .field_type = FIELD_TYPE_FLOAT,
+        .field_value = {
+            .floating = 0.0
+        }
+    }
+};
+
+
+/*
+ * Pressure Transducers
+ */
 
 static field_t pressure_transducer_a0_field = {
     .name = "PT0",
@@ -214,18 +247,6 @@ static uint64_t time_us_prev = 0;
 static uint64_t time_us_delta = 0;
 
 /**
- * Apply the calibration of scale 0 to the given scale measurement, returning a
- * value in grams.
- */
-double apply_scale_0_calibration(uint32_t measurement);
-
-/**
- * Apply the calibration of scale 1 to the given scale measurement, returning a
- * value in grams.
- */
-double apply_scale_1_calibration(uint32_t measurement);
-
-/**
  * Set a valve, open is `true`, closed is `false`.
  */
 void set_valve(valve_e valve, bool state);
@@ -234,8 +255,8 @@ void app_main() {
     sleep(2);
     uart_init();
     i2c_init();
+    scales_init();
     ads111x_device_add();
-    hx711_setup_pins_many(LOAD_CELL_CLOCK, load_cell_data_pins, LOAD_CELL_COUNT);
 
     command_reader_t command_reader = make_command_reader(NULL);
     command_t command;
@@ -254,27 +275,28 @@ void app_main() {
         pressure_transducer_a2_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A2));
         pressure_transducer_a3_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A3));
 
-        // Load cells
+        // Scales
 
-        hx711_read_many(LOAD_CELL_CLOCK, load_cell_data_pins, load_cell_measurements, LOAD_CELL_COUNT);
+        scales_update();
 
-        scale_0_measurement = load_cell_measurements[0] + load_cell_measurements[1];
-        double new_scale_0_value = apply_scale_0_calibration(scale_0_measurement);
-        scale_0_value_rate = (new_scale_0_value - scale_0_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
-        scale_0_value = new_scale_0_value;
+        double new_scale_ox_value = scales_get_ox();
+        scale_ox_value_rate = (new_scale_ox_value - scale_ox_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
+        scale_ox_value = new_scale_ox_value;
+        scale_ox_field.value.field_value.floating = new_scale_ox_value;
+        scale_ox_rate_field.value.field_value.floating = scale_ox_value_rate;
 
-        scale_1_measurement = load_cell_measurements[2];
-        double new_scale_1_value = apply_scale_1_calibration(scale_1_measurement);
-        scale_1_value_rate = (new_scale_1_value - scale_1_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
-        scale_1_value = new_scale_1_value;
+        double new_scale_fuel_value = scales_get_fuel();
+        scale_fuel_value_rate = (new_scale_fuel_value - scale_fuel_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
+        scale_fuel_value = new_scale_fuel_value;
+        scale_fuel_field.value.field_value.floating = new_scale_fuel_value;
+        scale_fuel_rate_field.value.field_value.floating = scale_fuel_value_rate;
 
-        scale_0_field.value.field_value.floating = new_scale_0_value;
-        scale_0_rate_field.value.field_value.floating = scale_0_value_rate;
+        ox_fuel_ratio_field.value.field_value.floating = scale_ox_value_rate / scale_fuel_value_rate;
 
-        scale_1_field.value.field_value.floating = scale_1_value;
-        scale_1_rate_field.value.field_value.floating = scale_1_value_rate;
-
-        scale_rates_ratio.value.field_value.floating = scale_0_value_rate / scale_1_value_rate;
+        double new_scale_thrust_value = scales_get_thrust();
+        scale_thrust_value_rate = (new_scale_thrust_value - scale_thrust_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
+        scale_thrust_field.value.field_value.floating = new_scale_thrust_value;
+        scale_thrust_rate_field.value.field_value.floating = scale_thrust_value_rate;
 
         // Update values of valves
 
@@ -296,11 +318,13 @@ void app_main() {
 
         // Field updates
 
-        update_field(scale_0_field);
-        update_field(scale_0_rate_field);
-        update_field(scale_1_field);
-        update_field(scale_1_rate_field);
-        update_field(scale_rates_ratio);
+        update_field(scale_ox_field);
+        update_field(scale_ox_rate_field);
+        update_field(scale_fuel_field);
+        update_field(scale_fuel_rate_field);
+        update_field(ox_fuel_ratio_field);
+        update_field(scale_thrust_field);
+        update_field(scale_thrust_rate_field);
 
         update_field(pressure_transducer_a0_field);
         update_field(pressure_transducer_a1_field);
@@ -355,14 +379,6 @@ void app_main() {
         // Delay so the watchdog doesn't bite
         vTaskDelay(10);
     }
-}
-
-double apply_scale_0_calibration(uint32_t measurement) {
-    return ((double)measurement - 1053966.648) / 90.53951915;
-}
-
-double apply_scale_1_calibration(uint32_t measurement) {
-    return ((double)measurement - 103290.83242068) / 31.9587971598634;
 }
 
 void set_valve(valve_e valve, bool state) {
