@@ -18,8 +18,8 @@ static bool is_prefix(const char* base, const char* prefix) {
 }
 
 /**
- * Sets the given `valve_e` to the valve corrosponding to the given string,
- * returning zero on success and a negative value on failure.
+ * Returns the valve corrosponding to the given string `base`, or `NONE` i fno
+ * such valve exists.
  */
 static valve_e parse_valve(const char* base) {
 	if (strcmp(base, "NP1") == 0) {
