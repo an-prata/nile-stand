@@ -84,7 +84,7 @@ static field_t scale_fuel_rate_field = {
  */
 
 static field_t ox_fuel_ratio_field = {
-    .name = "Scale Ox/Fuel Ratio",
+    .name = "Ox/Fuel Ratio",
     .value = {
         .field_type = FIELD_TYPE_FLOAT,
         .field_value = {
@@ -369,7 +369,7 @@ void app_main() {
                     set_valve(command.cmd_valve, false);
                     break;
                 case COMMAND_IGNITE:
-                    // TODO: Handle ignition!!!!
+                    set_e_match(true);
                     break;
             }
         }
@@ -418,5 +418,13 @@ void set_valve(valve_e valve, bool state) {
         solenoid_controller_open(solenoid);
     } else {
         solenoid_controller_close(solenoid);
+    }
+}
+
+void set_e_match(bool state) {
+    if (state) {
+        solenoid_controller_open(E_MATCH);
+    } else {
+        solenoid_controller_close(E_MATCH);
     }
 }
