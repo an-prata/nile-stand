@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <driver/gpio.h>
 
+#define PULSE_DELIMETER 500  /* Time between state sets, in this time the clock is high and data is low */
+
 typedef struct {
     gpio_num_t clock;
     gpio_num_t data;
@@ -44,6 +46,10 @@ void solenoid_controller_close(solenoid_controller_state_t state);
 
 /**
  * Push the internal record of desired state to the solenoid controller.
+ * 
+ * Careful when you call this function, it will block until `PULSE_DELIMETER`
+ * microseconds have elapsed since the last time the solenoid controller state
+ * was pushed/set.
  */
 void solenoid_controller_push(solenoid_controller_pins_t pins);
 
@@ -51,8 +57,12 @@ void solenoid_controller_push(solenoid_controller_pins_t pins);
  * Set the state of the solenoid controller. The state is an integer who's bits
  * corrospond to solenoids at the same position. So `0b1100` would set solenoids
  * `0` and `1` closed and solenoids `2` and `3` open.
+ * 
+ * Careful when you call this function, it will block until `PULSE_DELIMETER`
+ * microseconds have elapsed since the last time the solenoid controller state
+ * was pushed/set.
  */
-void solenoid_contrller_set(solenoid_controller_pins_t pins, solenoid_controller_state_t state);
+void solenoid_controller_set(solenoid_controller_pins_t pins, solenoid_controller_state_t state);
 
 /**
  * Get the current record of the solenoid controller's state.

@@ -11,11 +11,10 @@
 #include "solenoid_controller.h"
 #include "uart.h"
 #include "scales.h"
+#include "timing.h"
 
 #define SERIAL_UART
 //#define SERIAL_USB
-
-#define MICROS_TO_SECONDS 0.000001
 
 static solenoid_controller_pins_t solenoid_pins = {
     .clock = GPIO_NUM_16,
@@ -248,9 +247,6 @@ static bool double_action_valve_triggered = false;
 char rx_buf[RX_BUF_LEN] = { '\0' };
 size_t rx_idx = 0;
 
-static uint64_t time_us_prev = 0;
-static uint64_t time_us_delta = 0;
-
 /**
  * Set a valve, open is `true`, closed is `false`.
  */
@@ -267,11 +263,7 @@ void app_main() {
     command_t command;
     
     while (true) {
-        // Timing/clock
-
-        uint64_t current_time = esp_timer_get_time();
-        time_us_delta = current_time - time_us_prev;
-        time_us_prev = current_time;
+        timing_mark_loop();
 
         // PTs
 
@@ -280,18 +272,19 @@ void app_main() {
         pressure_transducer_a2_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A2));
         pressure_transducer_a3_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A3));
 
-        // Scales
+        // Scales - we also compute the rates of change of the scales for publishing, since that
+        // also fairly relevant information.
 
         scales_update();
 
         double new_scale_ox_value = scales_get_ox();
-        scale_ox_value_rate = (new_scale_ox_value - scale_ox_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
+        scale_ox_value_rate = timing_d_dt(scale_ox_value, new_scale_ox_value);
         scale_ox_value = new_scale_ox_value;
         scale_ox_field.value.field_value.floating = new_scale_ox_value;
         scale_ox_rate_field.value.field_value.floating = scale_ox_value_rate;
 
         double new_scale_fuel_value = scales_get_fuel();
-        scale_fuel_value_rate = (new_scale_fuel_value - scale_fuel_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
+        scale_fuel_value_rate = timing_d_dt(scale_fuel_value, new_scale_fuel_value);
         scale_fuel_value = new_scale_fuel_value;
         scale_fuel_field.value.field_value.floating = new_scale_fuel_value;
         scale_fuel_rate_field.value.field_value.floating = scale_fuel_value_rate;
@@ -299,7 +292,7 @@ void app_main() {
         ox_fuel_ratio_field.value.field_value.floating = scale_ox_value_rate / scale_fuel_value_rate;
 
         double new_scale_thrust_value = scales_get_thrust();
-        scale_thrust_value_rate = (new_scale_thrust_value - scale_thrust_value) / ((double)time_us_delta * MICROS_TO_SECONDS);
+        scale_thrust_value_rate = timing_d_dt(scale_thrust_value, new_scale_thrust_value);
         scale_thrust_field.value.field_value.floating = new_scale_thrust_value;
         scale_thrust_rate_field.value.field_value.floating = scale_thrust_value_rate;
 
@@ -377,7 +370,9 @@ void app_main() {
         memset(rx_buf, '\0', RX_BUF_LEN);
         rx_idx = 0;
 
-        // Update the solenoid controller
+        // Update the solenoid controller, this should be done later in the loop since it blocks for
+        // some time if enough time has not yet elapsed between calls, in which we ideally perform
+        // some computation/gather data elsewhere.
 
         solenoid_controller_push(solenoid_pins);
 

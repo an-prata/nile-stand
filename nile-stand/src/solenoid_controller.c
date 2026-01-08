@@ -3,8 +3,6 @@
 
 #include "solenoid_controller.h"
 
-#define PULSE_DELIMETER 500
-
 static solenoid_controller_state_t controller_state = 0;
 static uint64_t controller_set_time = 0;
 
@@ -24,10 +22,10 @@ void solenoid_controller_close(solenoid_controller_state_t state) {
 }
 
 void solenoid_controller_push(solenoid_controller_pins_t pins) {
-    solenoid_contrller_set(pins, controller_state);
+    solenoid_controller_set(pins, controller_state);
 }
 
-void solenoid_contrller_set(solenoid_controller_pins_t pins, solenoid_controller_state_t state) {
+void solenoid_controller_set(solenoid_controller_pins_t pins, solenoid_controller_state_t state) {
     while (esp_timer_get_time() - controller_set_time < PULSE_DELIMETER) {
         vTaskDelay(5);
     }
