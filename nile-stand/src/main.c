@@ -13,6 +13,8 @@
 #include "scales.h"
 #include "timing.h"
 
+#define IGNITE_TIME_S 10.0
+
 #define SERIAL_UART
 //#define SERIAL_USB
 
@@ -374,6 +376,7 @@ void app_main() {
         // some time if enough time has not yet elapsed between calls, in which we ideally perform
         // some computation/gather data elsewhere.
 
+        set_e_match(false);
         solenoid_controller_push(solenoid_pins);
 
         // Delay so the watchdog doesn't bite
@@ -416,10 +419,20 @@ void set_valve(valve_e valve, bool state) {
     }
 }
 
+/**
+ * Sets the e-match high (ignites it) if `state` is true. Regardless of the
+ * argument this function will set the e-match low after `IGNITE_TIME_S` has
+ * elapsed since the last time the match was set high.
+ */
 void set_e_match(bool state) {
+    static timing_marker_t ignite_marker;
+
     if (state) {
+        ignite_marker = timing_mark();
         solenoid_controller_open(E_MATCH);
-    } else {
+    }
+
+    if (timing_time_since_s(ignite_marker) >= IGNITE_TIME_S) {
         solenoid_controller_close(E_MATCH);
     }
 }
