@@ -16,9 +16,9 @@
 
 #define IGNITE_TIME_S 10.0
 
-//#define ENABLE_PTS
-//#define ENABLE_LCS
-//#define ENABLE_SOLENOID_CONTROLLER
+#define ENABLE_PTS
+#define ENABLE_LCS
+#define ENABLE_SOLENOID_CONTROLLER
 
 //#define SERIAL_UART
 #define SERIAL_USB
@@ -401,8 +401,8 @@ void app_main() {
 
         command_reader_buffer(&command_reader, rx_buf);
 
-#ifdef ENABLE_SOLENOID_CONTROLLER
         while (command_reader_read(&command_reader, &command) == 0) {
+            #ifdef ENABLE_SOLENOID_CONTROLLER
             switch (command.cmd_type) {
                 case COMMAND_OPEN:
                     set_valve(command.cmd_valve, true);
@@ -414,8 +414,8 @@ void app_main() {
                     set_e_match(true);
                     break;
             }
+            #endif  /* ENABLE_SOLENOID_CONTROLLER */
         }
-#endif  /* ENABLE_SOLENOID_CONTROLLER */
 
         memset(rx_buf, '\0', RX_BUF_LEN);
         rx_idx = 0;
