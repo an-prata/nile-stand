@@ -2,6 +2,7 @@
 #include <i2c.h>
 
 #define I2C_MASTER_TIMEOUT_MS 1000
+#define I2C_RETRY_MAX 12
 
 static i2c_master_bus_handle_t handle;
 
@@ -27,16 +28,24 @@ void i2c_device_remove(i2c_master_dev_handle_t dev) {
 }
 
 void i2c_read(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t* data, size_t n) {
-    ESP_ERROR_CHECK(
-        i2c_master_transmit_receive(
+    esp_err_t err;
+    int retries = 0;
+
+    do {
+        retries++;
+        err = i2c_master_transmit_receive(
             dev,
             &reg,
             1,
             data,
             n, 
             I2C_MASTER_TIMEOUT_MS
-        )
-    );
+        );
+    } while (err != ESP_OK && retries <= I2C_RETRY_MAX);
+
+    if (err != ESP_OK) {
+        ESP_ERROR_CHECK(err);
+    }
 }
 
 void i2c_write(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t* data, size_t n) {
@@ -49,5 +58,15 @@ void i2c_write(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t* data, size_t n
     msg[0] = reg;
     memcpy(&msg[1], data, n);
 
-    ESP_ERROR_CHECK(i2c_master_transmit(dev, msg, 1 + n, I2C_MASTER_TIMEOUT_MS));
+    esp_err_t err;
+    int retries = 0;
+
+    do {
+        retries++;
+        err = i2c_master_transmit(dev, msg, 1 + n, I2C_MASTER_TIMEOUT_MS);
+    } while (err != ESP_OK && retries <= I2C_RETRY_MAX);
+
+    if (err != ESP_OK) {
+        ESP_ERROR_CHECK(err);
+    }
 }

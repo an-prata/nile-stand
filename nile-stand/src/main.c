@@ -12,22 +12,29 @@
 #include "uart.h"
 #include "scales.h"
 #include "timing.h"
+#include "hx711.h"
 
 #define IGNITE_TIME_S 10.0
 
-#define SERIAL_UART
-//#define SERIAL_USB
+//#define ENABLE_PTS
+//#define ENABLE_LCS
+//#define ENABLE_SOLENOID_CONTROLLER
 
+//#define SERIAL_UART
+#define SERIAL_USB
+
+#ifdef ENABLE_SOLENOID_CONTROLLER
 static solenoid_controller_pins_t solenoid_pins = {
     .clock = GPIO_NUM_16,
     .data = GPIO_NUM_17,
 };
-
+#endif  /* ENABLE_SOLENOID_CONTROLLER */
 
 /*
  * Ox Scale
  */
 
+#ifdef ENABLE_LCS
 static double scale_ox_value = 0.0;
 static double scale_ox_value_rate = 0.0;
 
@@ -121,12 +128,14 @@ static field_t scale_thrust_rate_field = {
         }
     }
 };
+#endif  /* ENABLE_LCS */
 
 
 /*
  * Pressure Transducers
  */
 
+#ifdef ENABLE_PTS
 static field_t pressure_transducer_a0_field = {
     .name = "PT0",
     .value = {
@@ -166,12 +175,14 @@ static field_t pressure_transducer_a3_field = {
         }
     }
 };
+#endif  /* ENABLE_PTS */
 
 
-/**
+/*
  * Valve fields
  */
 
+#ifdef ENABLE_SOLENOID_CONTROLLER
 static field_t valve_np1_field = {
     .name = "NP1",
     .value = {
@@ -197,7 +208,7 @@ static field_t valve_np3_field = {
     .value = {
         .field_type = FIELD_TYPE_BOOLEAN,
         .field_value = {
-            .boolean = false
+            .boolean = true
         }
     }
 };
@@ -237,46 +248,72 @@ static field_t valve_ip3_field = {
     .value = {
         .field_type = FIELD_TYPE_BOOLEAN,
         .field_value = {
-            .boolean = false
+            .boolean = true
         }
     }
 };
 
-#define RX_BUF_LEN 256
-
 static bool double_action_valve_triggered = false;
+#endif  /* ENABLE_SOLENOID_CONTROLLER */
+
+#define RX_BUF_LEN 256
 
 char rx_buf[RX_BUF_LEN] = { '\0' };
 size_t rx_idx = 0;
 
+/*
+ * Helpers for solenoid control.
+ */
+
+#ifdef ENABLE_SOLENOID_CONTROLLER
 /**
  * Set a valve, open is `true`, closed is `false`.
  */
 void set_valve(valve_e valve, bool state);
 
+/**
+ * Light the e-match on `true`, and for all sets of parameters check if the
+ * e-match should have its power cut and do so if needed.
+ */
+void set_e_match(bool state);
+#endif  /* ENABLE_SOLENOID_CONTROLLER */
+
 void app_main() {
     sleep(2);
     uart_init();
+
+#ifdef ENABLE_PTS
     i2c_init();
-    scales_init();
     ads111x_device_add();
+#endif
+
+#ifdef ENABLE_LCS
+    scales_init();
+#endif
+
+#ifdef ENABLE_SOLENOID_CONTROLLER
+    solenoid_controller_setup(solenoid_pins);
+#endif
 
     command_reader_t command_reader = make_command_reader(NULL);
     command_t command;
-    
+
     while (true) {
         timing_mark_loop();
 
         // PTs
 
+#ifdef ENABLE_PTS
         pressure_transducer_a0_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A0));
         pressure_transducer_a1_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A1));
         pressure_transducer_a2_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A2));
         pressure_transducer_a3_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A3));
+#endif
 
-        // Scales - we also compute the rates of change of the scales for publishing, since that
+        // Scales - we also compute the rates of change of the scales for publishing, since thats
         // also fairly relevant information.
 
+#ifdef ENABLE_LCS
         scales_update();
 
         double new_scale_ox_value = scales_get_ox();
@@ -297,14 +334,16 @@ void app_main() {
         scale_thrust_value_rate = timing_d_dt(scale_thrust_value, new_scale_thrust_value);
         scale_thrust_field.value.field_value.floating = new_scale_thrust_value;
         scale_thrust_rate_field.value.field_value.floating = scale_thrust_value_rate;
+#endif  /* ENABLE_LCS */
 
         // Update values of valves
 
+#ifdef ENABLE_SOLENOID_CONTROLLER
         solenoid_controller_state_t solenoid_states = solenoid_controller_get();
 
         valve_np1_field.value.field_value.boolean = (solenoid_states & SOLENOID_0) > 0;
         valve_np2_field.value.field_value.boolean = (solenoid_states & SOLENOID_1) > 0;
-        valve_np3_field.value.field_value.boolean = (solenoid_states & SOLENOID_2) > 0;
+        valve_np3_field.value.field_value.boolean = (solenoid_states & SOLENOID_2) == 0;
         valve_np4_field.value.field_value.boolean = (solenoid_states & SOLENOID_3) > 0;
 
         if (solenoid_states & SOLENOID_6) {
@@ -314,10 +353,12 @@ void app_main() {
         }
         
         valve_ip2_field.value.field_value.boolean = (solenoid_states & SOLENOID_4) > 0;
-        valve_ip3_field.value.field_value.boolean = (solenoid_states & SOLENOID_5) > 0;
+        valve_ip3_field.value.field_value.boolean = (solenoid_states & SOLENOID_5) == 0;
+#endif
 
         // Field updates
 
+#ifdef ENABLE_LCS
         update_field(scale_ox_field);
         update_field(scale_ox_rate_field);
         update_field(scale_fuel_field);
@@ -325,12 +366,16 @@ void app_main() {
         update_field(ox_fuel_ratio_field);
         update_field(scale_thrust_field);
         update_field(scale_thrust_rate_field);
+#endif  /* ENABLE_LCS */
 
+#ifdef ENABLE_PTS
         update_field(pressure_transducer_a0_field);
         update_field(pressure_transducer_a1_field);
         update_field(pressure_transducer_a2_field);
         update_field(pressure_transducer_a3_field);
+#endif
 
+#ifdef ENABLE_SOLENOID_CONTROLLER
         update_field(valve_np1_field);
         update_field(valve_np2_field);
         update_field(valve_np3_field);
@@ -342,6 +387,7 @@ void app_main() {
 
         update_field(valve_ip2_field);
         update_field(valve_ip3_field);
+#endif
 
         // Handle commands
 
@@ -355,6 +401,7 @@ void app_main() {
 
         command_reader_buffer(&command_reader, rx_buf);
 
+#ifdef ENABLE_SOLENOID_CONTROLLER
         while (command_reader_read(&command_reader, &command) == 0) {
             switch (command.cmd_type) {
                 case COMMAND_OPEN:
@@ -368,6 +415,7 @@ void app_main() {
                     break;
             }
         }
+#endif  /* ENABLE_SOLENOID_CONTROLLER */
 
         memset(rx_buf, '\0', RX_BUF_LEN);
         rx_idx = 0;
@@ -376,14 +424,17 @@ void app_main() {
         // some time if enough time has not yet elapsed between calls, in which we ideally perform
         // some computation/gather data elsewhere.
 
+#ifdef ENABLE_SOLENOID_CONTROLLER
         set_e_match(false);
         solenoid_controller_push(solenoid_pins);
+#endif  /* ENABLE_SOLENOID_CONTROLLER */
 
         // Delay so the watchdog doesn't bite
         vTaskDelay(10);
     }
 }
 
+#ifdef ENABLE_SOLENOID_CONTROLLER
 void set_valve(valve_e valve, bool state) {
     // Handle the weird double action valve.
     if (valve == IP1 && state) {
@@ -436,3 +487,4 @@ void set_e_match(bool state) {
         solenoid_controller_close(E_MATCH);
     }
 }
+#endif  /* ENABLE_SOLENOID_CONTROLLER */

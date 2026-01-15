@@ -39,7 +39,7 @@ void ads111x_device_add(void) {
     i2c_device_config_t conf = {
         .device_address = ADS111X_ADDR,
         .dev_addr_length = I2C_ADDR_BIT_7,
-        .scl_speed_hz = 100000,
+        .scl_speed_hz = 400000,
     };
 
     i2c_device_add(&handle, &conf);
@@ -50,16 +50,17 @@ uint16_t ads111x_read(ads111x_channel_e channel) {
     ads111x_config_t state = 0;
 
     ads111x_set_channel(channel);
-    usleep(200);
 
-    do {
+    /* do {
         i2c_read(handle, ADS111X_REG_CONFIG, data, 2);
-        state = (data[0] << 8) | data[1];
-    } while (!(state & ADS111X_CONFIG_START_CONVERSION));
+        state = ((uint16_t)data[0] << 8) | (uint16_t)data[1];
+    } while (!(state & ADS111X_CONFIG_START_CONVERSION)); */
+
+    usleep(10000);
 
     i2c_read(handle, ADS111X_REG_CONVERSION, data, 2);
 
-    uint16_t value = (data[0] << 8) | data[1];
+    uint16_t value = ((uint16_t)data[0] << 8) | (uint16_t)data[1];
    
     return value;
 }
