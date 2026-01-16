@@ -24,7 +24,7 @@ typedef enum {
 typedef union {
     uint64_t unsigned_int;
     int64_t signed_int;
-    double floating;
+    float floating;
     bool boolean;
 } field_value_u;
 

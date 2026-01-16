@@ -1,5 +1,7 @@
 #include <math.h>
 #include <unistd.h>
+#include <esp_task_wdt.h>
+#include <esp_timer.h>
 
 #include "ads111x.h"
 #include "i2c.h"
@@ -55,8 +57,6 @@ uint16_t ads111x_read(ads111x_channel_e channel) {
         i2c_read(handle, ADS111X_REG_CONFIG, data, 2);
         state = ((uint16_t)data[0] << 8) | (uint16_t)data[1];
     } while (!(state & ADS111X_CONFIG_START_CONVERSION)); */
-
-    usleep(10000);
 
     i2c_read(handle, ADS111X_REG_CONVERSION, data, 2);
 

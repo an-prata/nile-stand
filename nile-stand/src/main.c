@@ -19,6 +19,7 @@
 #define ENABLE_PTS
 #define ENABLE_LCS
 #define ENABLE_SOLENOID_CONTROLLER
+#define ENABLE_RATE_TRACKING
 
 //#define SERIAL_UART
 #define SERIAL_USB
@@ -35,8 +36,8 @@ static solenoid_controller_pins_t solenoid_pins = {
  */
 
 #ifdef ENABLE_LCS
-static double scale_ox_value = 0.0;
-static double scale_ox_value_rate = 0.0;
+static float scale_ox_value = 0.0;
+static float scale_ox_value_rate = 0.0;
 
 static field_t scale_ox_field = {
     .name = "Scale Ox",
@@ -63,8 +64,8 @@ static field_t scale_ox_rate_field = {
  * Fuel Scale
  */
 
-static double scale_fuel_value = 0.0;
-static double scale_fuel_value_rate = 0.0;
+static float scale_fuel_value = 0.0;
+static float scale_fuel_value_rate = 0.0;
 
 static field_t scale_fuel_field = {
     .name = "Scale Fuel",
@@ -106,8 +107,8 @@ static field_t ox_fuel_ratio_field = {
  * Thrust Scale
  */
 
-static double scale_thrust_value = 0.0;
-static double scale_thrust_value_rate = 0.0;
+static float scale_thrust_value = 0.0;
+static float scale_thrust_value_rate = 0.0;
 
 static field_t scale_thrust_field = {
     .name = "Scale Thrust",
@@ -137,7 +138,7 @@ static field_t scale_thrust_rate_field = {
 
 #ifdef ENABLE_PTS
 static field_t pressure_transducer_a0_field = {
-    .name = "PT0",
+    .name = "NPT1",
     .value = {
         .field_type = FIELD_TYPE_FLOAT,
         .field_value = {
@@ -147,7 +148,7 @@ static field_t pressure_transducer_a0_field = {
 };
 
 static field_t pressure_transducer_a1_field = {
-    .name = "PT1",
+    .name = "NPT3",
     .value = {
         .field_type = FIELD_TYPE_FLOAT,
         .field_value = {
@@ -157,7 +158,7 @@ static field_t pressure_transducer_a1_field = {
 };
 
 static field_t pressure_transducer_a2_field = {
-    .name = "PT2",
+    .name = "IPT1",
     .value = {
         .field_type = FIELD_TYPE_FLOAT,
         .field_value = {
@@ -167,7 +168,7 @@ static field_t pressure_transducer_a2_field = {
 };
 
 static field_t pressure_transducer_a3_field = {
-    .name = "PT3",
+    .name = "IPT3",
     .value = {
         .field_type = FIELD_TYPE_FLOAT,
         .field_value = {
@@ -256,6 +257,32 @@ static field_t valve_ip3_field = {
 static bool double_action_valve_triggered = false;
 #endif  /* ENABLE_SOLENOID_CONTROLLER */
 
+/*
+ * Field for loop rate
+ */
+
+#ifdef ENABLE_RATE_TRACKING
+static field_t update_rate_field = {
+    .name = "Update Rate",
+    .value = {
+        .field_type = FIELD_TYPE_FLOAT,
+        .field_value = {
+            .floating = 0.0
+        }
+    }
+};
+
+static field_t update_time_field = {
+    .name = "Update Time",
+    .value = {
+        .field_type = FIELD_TYPE_FLOAT,
+        .field_value = {
+            .floating = 0.0,
+        }
+    }
+};
+#endif  /* ENABLE_RATE_TRACKING */
+
 #define RX_BUF_LEN 256
 
 char rx_buf[RX_BUF_LEN] = { '\0' };
@@ -316,13 +343,13 @@ void app_main() {
 #ifdef ENABLE_LCS
         scales_update();
 
-        double new_scale_ox_value = scales_get_ox();
+        float new_scale_ox_value = scales_get_ox();
         scale_ox_value_rate = timing_d_dt(scale_ox_value, new_scale_ox_value);
         scale_ox_value = new_scale_ox_value;
         scale_ox_field.value.field_value.floating = new_scale_ox_value;
         scale_ox_rate_field.value.field_value.floating = scale_ox_value_rate;
 
-        double new_scale_fuel_value = scales_get_fuel();
+        float new_scale_fuel_value = scales_get_fuel();
         scale_fuel_value_rate = timing_d_dt(scale_fuel_value, new_scale_fuel_value);
         scale_fuel_value = new_scale_fuel_value;
         scale_fuel_field.value.field_value.floating = new_scale_fuel_value;
@@ -330,7 +357,7 @@ void app_main() {
 
         ox_fuel_ratio_field.value.field_value.floating = scale_ox_value_rate / scale_fuel_value_rate;
 
-        double new_scale_thrust_value = scales_get_thrust();
+        float new_scale_thrust_value = scales_get_thrust();
         scale_thrust_value_rate = timing_d_dt(scale_thrust_value, new_scale_thrust_value);
         scale_thrust_field.value.field_value.floating = new_scale_thrust_value;
         scale_thrust_rate_field.value.field_value.floating = scale_thrust_value_rate;
@@ -429,8 +456,16 @@ void app_main() {
         solenoid_controller_push(solenoid_pins);
 #endif  /* ENABLE_SOLENOID_CONTROLLER */
 
+#ifdef ENABLE_RATE_TRACKING
+        update_time_field.value.field_value.floating = timing_delta_time_s();
+        update_rate_field.value.field_value.floating = 1.0 / update_time_field.value.field_value.floating;
+
+        update_field(update_time_field);
+        update_field(update_rate_field);
+#endif  /* ENABLE_RATE_TRACKING */
+
         // Delay so the watchdog doesn't bite
-        vTaskDelay(10);
+        //vTaskDelay(10);
     }
 }
 
@@ -447,6 +482,11 @@ void set_valve(valve_e valve, bool state) {
         solenoid_controller_open(SOLENOID_7);
         double_action_valve_triggered = true;
         return;
+    }
+
+    // Handle the two valves which fail open.
+    if (valve == NP3 || valve == IP3) {
+        state = !state;
     }
 
     solenoid_controller_state_t solenoid;

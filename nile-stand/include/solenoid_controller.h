@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <driver/gpio.h>
 
-#define PULSE_DELIMETER 500  /* Time between state sets, in this time the clock is high and data is low */
+#define PULSE_DELIMETER 1000  /* Time between state sets, in this time the clock is high and data is low */
 
 typedef struct {
     gpio_num_t clock;

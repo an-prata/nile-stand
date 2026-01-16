@@ -27,7 +27,7 @@
 #define LC_CLOCK GPIO_NUM_26
 #define LC_COUNT (SCALE_0_LCS + SCALE_1_LCS + SCALE_2_LCS)
 
-typedef double (*scale_calibration_t)(uint32_t);
+typedef float (*scale_calibration_t)(uint32_t);
 
 static const gpio_num_t lc_data_pins[LC_COUNT] = {
     //SCALE_0_LC_0,
@@ -41,16 +41,16 @@ static const gpio_num_t lc_data_pins[LC_COUNT] = {
     //SCALE_2_LC_2,
 };
 
-static double apply_scale_0_calibration(uint32_t measurement) {
-    return (double)measurement;
+static float apply_scale_0_calibration(uint32_t measurement) {
+    return (float)measurement;
 }
 
-static double apply_scale_1_calibration(uint32_t measurement) {
-    return (double)measurement;
+static float apply_scale_1_calibration(uint32_t measurement) {
+    return (float)measurement;
 }
 
-static double apply_scale_2_calibration(uint32_t measurement) {
-    return (double)measurement;
+static float apply_scale_2_calibration(uint32_t measurement) {
+    return (float)measurement;
 }
 
 //static const size_t scale_map[SCALE_COUNT] = { SCALE_0_LCS, SCALE_1_LCS, SCALE_2_LCS };
@@ -75,10 +75,10 @@ void scales_update(void) {
     //scale_measurements[SCALE_THRUST] = lc_measurements[3] + lc_measurements[4] + lc_measurements[5];
 }
 
-double scales_get(size_t scale_num) {
+float scales_get(size_t scale_num) {
     return scale_calibrations[scale_num](scale_measurements[scale_num]);
 }
 
-double scales_get_ox(void) { return scales_get(SCALE_OX); }
-double scales_get_fuel(void) { return scales_get(SCALE_FUEL); }
-double scales_get_thrust(void) { return scales_get(SCALE_THRUST); }
+float scales_get_ox(void) { return scales_get(SCALE_OX); }
+float scales_get_fuel(void) { return scales_get(SCALE_FUEL); }
+float scales_get_thrust(void) { return scales_get(SCALE_THRUST); }

@@ -1,16 +1,22 @@
 #include <esp_timer.h>
 #include <esp_task_wdt.h>
+#include <unistd.h>
+#include <i2c.h>
+#include <stdint.h>
 
 #include "solenoid_controller.h"
 
 static solenoid_controller_state_t controller_state = 0;
-static uint64_t controller_set_time = 0;
+static i2c_master_dev_handle_t controller;
 
 void solenoid_controller_setup(solenoid_controller_pins_t pins) {
-    ESP_ERROR_CHECK(gpio_set_direction(pins.clock, GPIO_MODE_OUTPUT));
-    ESP_ERROR_CHECK(gpio_set_direction(pins.data, GPIO_MODE_OUTPUT));
+    i2c_device_config_t conf = {
+        .device_address = 0x0F,
+        .dev_addr_length = I2C_ADDR_BIT_7,
+        .scl_speed_hz = 400000,
+    };
 
-    ESP_ERROR_CHECK(gpio_set_level(pins.clock, 1));
+    i2c_device_add(&controller, &conf);
 }
 
 void solenoid_controller_open(solenoid_controller_state_t state) {
@@ -26,20 +32,8 @@ void solenoid_controller_push(solenoid_controller_pins_t pins) {
 }
 
 void solenoid_controller_set(solenoid_controller_pins_t pins, solenoid_controller_state_t state) {
-    while (esp_timer_get_time() - controller_set_time < PULSE_DELIMETER) {
-        vTaskDelay(5);
-    }
-    
-    for (int i = 0; i < 16; i++) {
-        ESP_ERROR_CHECK(gpio_set_level(pins.data, state % 2));
-        ESP_ERROR_CHECK(gpio_set_level(pins.clock, 0));
-        vTaskDelay(5);
-        ESP_ERROR_CHECK(gpio_set_level(pins.clock, 1));
-        state = state >> 1;
-    }
-    
-    ESP_ERROR_CHECK(gpio_set_level(pins.data, 0));
     controller_state = state;
+    i2c_write_raw(controller, (uint8_t*)&state, sizeof state);
 }
 
 solenoid_controller_state_t solenoid_controller_get(void) {

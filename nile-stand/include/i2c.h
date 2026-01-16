@@ -34,4 +34,6 @@ void i2c_read(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t* data, size_t n)
  */
 void i2c_write(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t* data, size_t n);
 
+void i2c_write_raw(i2c_master_dev_handle_t dev, uint8_t* data, size_t n);
+
 #endif  /* I2C_H */

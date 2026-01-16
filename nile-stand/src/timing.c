@@ -20,7 +20,7 @@ uint64_t timing_time_since_us(timing_marker_t marker) {
     return esp_timer_get_time() - marker;
 }
 
-double timing_time_since_s(timing_marker_t marker) {
+float timing_time_since_s(timing_marker_t marker) {
     return timing_time_since_us(marker) * MICROS_TO_SECONDS;
 }
 
@@ -28,10 +28,10 @@ uint64_t timing_delta_time_us(void) {
     return timing_delta_time;
 }
 
-double timing_delta_time_s(void) {
-    return (double)timing_delta_time + MICROS_TO_SECONDS;
+float timing_delta_time_s(void) {
+    return (float)timing_delta_time * MICROS_TO_SECONDS;
 }
 
-double timing_d_dt(double x0, double x1) {
+float timing_d_dt(float x0, float x1) {
     return (x1 - x0) / timing_delta_time_s();
 }
