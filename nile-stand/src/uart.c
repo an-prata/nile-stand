@@ -30,7 +30,7 @@ void uart_init(void) {
     };
 
     ESP_ERROR_CHECK(uart_param_config(UART_NUM, &config));
-
+    ESP_ERROR_CHECK(uart_set_mode(UART_NUM, UART_MODE_RS485_HALF_DUPLEX));
     ESP_ERROR_CHECK(
         uart_set_pin(
             UART_NUM,
@@ -52,8 +52,11 @@ void uart_send(const char* msg) {
 size_t uart_recieve(char* msg, size_t n) {
     size_t len = 0;
     ESP_ERROR_CHECK(uart_get_buffered_data_len(UART_NUM, &len));
+    printf("Len: %d\n", len);
 
-    int bytes_read = uart_read_bytes(UART_NUM, msg, len, 100);
+    int bytes_read = uart_read_bytes(UART_NUM, msg, len, 100 / portTICK_PERIOD_MS);
+
+    printf("Read: %d\n", bytes_read);
 
     if (bytes_read < 0) {
         ESP_LOGE(TAG, "Could not read off of UART!");

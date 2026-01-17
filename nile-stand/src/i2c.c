@@ -18,20 +18,21 @@ void i2c_init(void) {
         .clk_source = I2C_CLK_SRC_DEFAULT,
         .glitch_ignore_cnt = 7,
         .flags.enable_internal_pullup = true,
+        .intr_priority = 3,
     };
     
     ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &handle));
-    //ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
+    ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
 }
 
 void i2c_device_add(i2c_master_dev_handle_t* dev, i2c_device_config_t* config) {
     ESP_ERROR_CHECK(i2c_master_bus_add_device(handle, config, dev));
-    //ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
+    ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
 }
 
 void i2c_device_remove(i2c_master_dev_handle_t dev) {
     ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev));
-    //ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
+    ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
 }
 
 void i2c_read(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t* data, size_t n) {
@@ -49,7 +50,7 @@ void i2c_read(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t* data, size_t n)
             I2C_MASTER_TIMEOUT_MS
         );
 
-        //ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
+        ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
     } while (err != ESP_OK && retries <= I2C_RETRY_MAX);
 
 
@@ -74,7 +75,7 @@ void i2c_write(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t* data, size_t n
     do {
         retries++;
         err = i2c_master_transmit(dev, msg, 1 + n, I2C_MASTER_TIMEOUT_MS);
-        //ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
+        ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
     } while (err != ESP_OK && retries <= I2C_RETRY_MAX);
 
     if (err != ESP_OK) {
@@ -89,7 +90,7 @@ void i2c_write_raw(i2c_master_dev_handle_t dev, uint8_t* data, size_t n) {
     do {
         retries++;
         err = i2c_master_transmit(dev, data, n, I2C_MASTER_TIMEOUT_MS);
-        //ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
+        ESP_ERROR_CHECK(i2c_master_bus_wait_all_done(handle, I2C_MASTER_TIMEOUT_MS));
     } while (err != ESP_OK && retries <= I2C_RETRY_MAX);
 
     if (err != ESP_OK) {

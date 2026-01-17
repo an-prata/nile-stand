@@ -3,6 +3,7 @@
 #include <esp_task_wdt.h>
 #include <esp_timer.h>
 #include <unistd.h>
+#include <hal/wdt_hal.h>
 
 #include "field.h"
 #include "pressure_transducer.h"
@@ -16,7 +17,7 @@
 
 #define IGNITE_TIME_S 10.0
 
-#define ENABLE_PTS
+//#define ENABLE_PTS
 #define ENABLE_LCS
 #define ENABLE_SOLENOID_CONTROLLER
 #define ENABLE_RATE_TRACKING
@@ -308,9 +309,12 @@ void set_e_match(bool state);
 void app_main() {
     sleep(2);
     uart_init();
+    
+#if defined(ENABLE_PTS) || defined(ENABLE_SOLENOID_CONTROLLER)
+    i2c_init();
+#endif
 
 #ifdef ENABLE_PTS
-    i2c_init();
     ads111x_device_add();
 #endif
 
@@ -465,7 +469,10 @@ void app_main() {
 #endif  /* ENABLE_RATE_TRACKING */
 
         // Delay so the watchdog doesn't bite
-        //vTaskDelay(10);
+        wdt_hal_context_t rtc_wdt_ctx = RWDT_HAL_CONTEXT_DEFAULT();
+        wdt_hal_write_protect_disable(&rtc_wdt_ctx);
+        wdt_hal_feed(&rtc_wdt_ctx);
+        wdt_hal_write_protect_enable(&rtc_wdt_ctx);
     }
 }
 

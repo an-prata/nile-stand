@@ -124,11 +124,12 @@ void app_main() {
     i2c_slave_config_t i2c_config = {
         .i2c_port = I2C_NUM_0,
         .clk_source = I2C_CLK_SRC_DEFAULT,
-        .scl_io_num = GPIO_NUM_22,
         .sda_io_num = GPIO_NUM_21,
+        .scl_io_num = GPIO_NUM_22,
         .slave_addr = 0x0F,
         .send_buf_depth = 100,
         .receive_buf_depth = 100,
+        .intr_priority = 3,
     };
 
     i2c_slave_event_callbacks_t callbacks = {
