@@ -9,7 +9,8 @@
 #define I2C_DATA GPIO_NUM_21 
 
 /**
- * Initialize the I2C bus.
+ * Initialize the I2C bus. This function may safely be called more than once,
+ * and will only initialize I2C once.
  */
 void i2c_init(void);
 

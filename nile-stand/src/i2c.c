@@ -8,9 +8,13 @@
 #define I2C_MASTER_TIMEOUT_MS 100
 #define I2C_RETRY_MAX 12
 
-static i2c_master_bus_handle_t handle;
+static i2c_master_bus_handle_t handle = NULL;
 
 void i2c_init(void) {
+    if (handle) {
+        return;
+    }
+    
     i2c_master_bus_config_t bus_config = {
         .i2c_port = I2C_NUM,
         .sda_io_num = I2C_DATA,

@@ -53,13 +53,6 @@ static float apply_scale_2_calibration(uint32_t measurement) {
     return (float)measurement;
 }
 
-//static const size_t scale_map[SCALE_COUNT] = { SCALE_0_LCS, SCALE_1_LCS, SCALE_2_LCS };
-static const scale_calibration_t scale_calibrations[SCALE_COUNT] = {
-    apply_scale_0_calibration,
-    apply_scale_1_calibration,
-    apply_scale_2_calibration
-};
-
 static uint32_t lc_measurements[LC_COUNT] = { 200 };
 static uint32_t scale_measurements[SCALE_COUNT] = { 600 };
 
@@ -75,10 +68,6 @@ void scales_update(void) {
     //scale_measurements[SCALE_THRUST] = lc_measurements[3] + lc_measurements[4] + lc_measurements[5];
 }
 
-float scales_get(size_t scale_num) {
-    return scale_calibrations[scale_num](scale_measurements[scale_num]);
-}
-
-float scales_get_ox(void) { return scales_get(SCALE_OX); }
-float scales_get_fuel(void) { return scales_get(SCALE_FUEL); }
-float scales_get_thrust(void) { return scales_get(SCALE_THRUST); }
+float scales_get_ox(void) { return (float)scale_measurements[SCALE_OX] * 31968 + 1.189E6; }
+float scales_get_fuel(void) { return (float)scale_measurements[SCALE_FUEL]; }
+float scales_get_thrust(void) { return (float)scale_measurements[SCALE_THRUST]; }

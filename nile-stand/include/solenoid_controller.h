@@ -28,7 +28,8 @@ typedef struct {
 typedef uint16_t solenoid_controller_state_t;
 
 /**
- * Set up a solenoid controller at the given pins.
+ * Set up a solenoid controller. This function may be called more than once, and
+ * will only set up the controller once. 
  */
 void solenoid_controller_setup(solenoid_controller_pins_t pins);
 

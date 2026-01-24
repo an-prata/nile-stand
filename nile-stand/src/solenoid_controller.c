@@ -7,9 +7,13 @@
 #include "solenoid_controller.h"
 
 static solenoid_controller_state_t controller_state = 0;
-static i2c_master_dev_handle_t controller;
+static i2c_master_dev_handle_t controller = NULL;
 
 void solenoid_controller_setup(solenoid_controller_pins_t pins) {
+    if (controller) {
+        return;
+    }
+    
     i2c_device_config_t conf = {
         .device_address = 0x0F,
         .dev_addr_length = I2C_ADDR_BIT_7,
