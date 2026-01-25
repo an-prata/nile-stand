@@ -12,7 +12,7 @@
 /**
  * Initialize UART with a default configuation and given mode.
  */
-static void _uart_init(uart_t* uart, uart_port_t port, int pin_tx, int pin_rx, uart_mode_t mode) {
+static void _uart_init(uart_t* uart, uart_port_t port, gpio_num_t pin_tx, gpio_num_t pin_rx, uart_mode_t mode) {
     uart->port = port;
     uart->pin_tx = pin_tx;
     uart->pin_rx = pin_rx;
@@ -53,11 +53,11 @@ static void _uart_init(uart_t* uart, uart_port_t port, int pin_tx, int pin_rx, u
     ESP_ERROR_CHECK(uart_enable_tx_intr(UART_NUM, 1, TIMEOUT));
 }
 
-void uart_init(uart_t* uart, uart_port_t port, int pin_tx, int pin_rx) {
+void uart_init(uart_t* uart, uart_port_t port, gpio_num_t pin_tx, gpio_num_t pin_rx) {
     _uart_init(uart, port, pin_tx, pin_rx, UART_MODE_UART);
 }
 
-void uart_rs485_init(uart_t* uart, uart_port_t port, int pin_tx, int pin_rx) {
+void uart_rs485_init(uart_t* uart, uart_port_t port, gpio_num_t pin_tx, gpio_num_t pin_rx) {
     _uart_init(uart, port, pin_tx, pin_rx, UART_MODE_RS485_HALF_DUPLEX);
 }
 

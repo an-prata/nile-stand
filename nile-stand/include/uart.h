@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <driver/uart.h>
 #include <hal/uart_types.h>
+#include <driver/gpio.h>
+
 
 #define UART_BUFFER_SIZE (1024 * 8)  /* 8KB */
 #define UART_QUEUE_SIZE 32
@@ -27,13 +29,13 @@ typedef void (*uart_print_function_t)(const char*);
 /**
  * Initialize UART with a default full duplex configuration.
  */
-void uart_init(uart_t* uart, uart_port_t port, int pin_tx, int pin_rx);
+void uart_init(uart_t* uart, uart_port_t port, gpio_num_t pin_tx, gpio_num_t pin_rx);
 
 /**
  * Initialize UART with a default half duplex configuration intended for use as
  * RS485.
  */
-void uart_rs485_init(uart_t* uart, uart_port_t port, int pin_tx, int pin_rx);
+void uart_rs485_init(uart_t* uart, uart_port_t port, gpio_num_t pin_tx, gpio_num_t pin_rx);
 
 /**
  * Send the given buffer of length `n`.
