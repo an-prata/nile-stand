@@ -4,12 +4,12 @@
 #include <stdint.h>
 #include <driver/gpio.h>
 
-#define PULSE_DELIMETER 1000  /* Time between state sets, in this time the clock is high and data is low */
+#include "uart.h"
 
 typedef struct {
-    gpio_num_t clock;
-    gpio_num_t data;
-} solenoid_controller_pins_t;
+    uart_t uart;
+    solenoid_controller_state_t state;
+} solenoid_controller_t;
 
 #define SOLENOID_0     0x0001
 #define SOLENOID_1     0x0002
@@ -31,19 +31,24 @@ typedef uint16_t solenoid_controller_state_t;
  * Set up a solenoid controller. This function may be called more than once, and
  * will only set up the controller once. 
  */
-void solenoid_controller_setup(solenoid_controller_pins_t pins);
+void solenoid_controller_init(
+    solenoid_controller_t* solenoid_controller,
+    uart_port_t port,
+    gpio_num_t pin_tx,
+    gpio_num_t pin_rx
+);
 
 /**
  * Update an internal record of the desired state of the solenoid controller by
  * setting it to also open the given solenoids.
  */
-void solenoid_controller_open(solenoid_controller_state_t state);
+void solenoid_controller_open(solenoid_controller_t* solenoid_controller, solenoid_controller_state_t state);
 
 /**
  * Update an internal record of the desired state of the solenoid controller by
  * setting it to also close the given solenoids.
  */
-void solenoid_controller_close(solenoid_controller_state_t state);
+void solenoid_controller_close(solenoid_controller_t* solenoid_controller, solenoid_controller_state_t state);
 
 /**
  * Push the internal record of desired state to the solenoid controller.
@@ -52,7 +57,7 @@ void solenoid_controller_close(solenoid_controller_state_t state);
  * microseconds have elapsed since the last time the solenoid controller state
  * was pushed/set.
  */
-void solenoid_controller_push(solenoid_controller_pins_t pins);
+void solenoid_controller_push(solenoid_controller_t* solenoid_controller);
 
 /**
  * Set the state of the solenoid controller. The state is an integer who's bits
@@ -63,11 +68,11 @@ void solenoid_controller_push(solenoid_controller_pins_t pins);
  * microseconds have elapsed since the last time the solenoid controller state
  * was pushed/set.
  */
-void solenoid_controller_set(solenoid_controller_pins_t pins, solenoid_controller_state_t state);
+void solenoid_controller_set(solenoid_controller_t* solenoid_controller, solenoid_controller_state_t state);
 
 /**
  * Get the current record of the solenoid controller's state.
  */
-solenoid_controller_state_t solenoid_controller_get(void);
+solenoid_controller_state_t solenoid_controller_get(solenoid_controller_t* solenoid_controller);
 
 #endif  /* SOLENOID_CONTROLLER_H */

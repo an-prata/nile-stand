@@ -23,10 +23,7 @@
 #define ENABLE_RATE_TRACKING
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
-static solenoid_controller_pins_t solenoid_pins = {
-    .clock = GPIO_NUM_16,
-    .data = GPIO_NUM_17,
-};
+static solenoid_controller_t solenoid_controller;
 #endif  /* ENABLE_SOLENOID_CONTROLLER */
 
 /*
@@ -335,7 +332,12 @@ void app_main() {
 #endif
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
-    solenoid_controller_setup(solenoid_pins);
+    solenoid_controller_init(
+        &solenoid_controller,
+        UART_NUM_0,
+        UART_PIN_NO_CHANGE,
+        UART_PIN_NO_CHANGE
+    );
 #endif
 
     command_reader_t command_reader = make_command_reader(NULL);
@@ -382,7 +384,7 @@ void app_main() {
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
         set_e_match(false);
-        solenoid_controller_push(solenoid_pins);
+        solenoid_controller_push(&solenoid_controller);
 #endif  /* ENABLE_SOLENOID_CONTROLLER */
 
 #ifdef ENABLE_RATE_TRACKING
@@ -404,13 +406,13 @@ void app_main() {
 void set_valve(valve_e valve, bool state) {
     // Handle the weird double action valve.
     if (valve == IP1 && state) {
-        solenoid_controller_open(SOLENOID_6);
-        solenoid_controller_close(SOLENOID_7);
+        solenoid_controller_open(&solenoid_controller, SOLENOID_6);
+        solenoid_controller_close(&solenoid_controller, SOLENOID_7);
         double_action_valve_triggered = true;
         return;
     } else if (valve == IP1 && !state) {
-        solenoid_controller_close(SOLENOID_6);
-        solenoid_controller_open(SOLENOID_7);
+        solenoid_controller_close(&solenoid_controller, SOLENOID_6);
+        solenoid_controller_open(&solenoid_controller, SOLENOID_7);
         double_action_valve_triggered = true;
         return;
     }
@@ -435,9 +437,9 @@ void set_valve(valve_e valve, bool state) {
     }
 
     if (state) {
-        solenoid_controller_open(solenoid);
+        solenoid_controller_open(&solenoid_controller, solenoid);
     } else {
-        solenoid_controller_close(solenoid);
+        solenoid_controller_close(&solenoid_controller, solenoid);
     }
 }
 
@@ -451,21 +453,25 @@ void set_e_match(bool state) {
 
     if (state) {
         ignite_marker = timing_mark();
-        solenoid_controller_open(E_MATCH);
+        solenoid_controller_open(&solenoid_controller, E_MATCH);
     }
 
     if (timing_time_since_s(ignite_marker) >= IGNITE_TIME_S) {
-        solenoid_controller_close(E_MATCH);
+        solenoid_controller_close(&solenoid_controller, E_MATCH);
     }
 }
 #endif  /* ENABLE_SOLENOID_CONTROLLER */
 
 void update_pts(void) {
 #ifdef ENABLE_PTS
-    pressure_transducer_a0_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A0));
-    pressure_transducer_a1_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A1));
-    pressure_transducer_a2_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A2));
-    pressure_transducer_a3_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A3));
+    pressure_transducer_a0_field.value.field_value.floating
+        = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A0));
+    pressure_transducer_a1_field.value.field_value.floating
+        = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A1));
+    pressure_transducer_a2_field.value.field_value.floating
+        = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A2));
+    pressure_transducer_a3_field.value.field_value.floating 
+        = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A3));
 
     update_field(&rs485_transmit, pressure_transducer_a0_field);
     update_field(&rs485_transmit, pressure_transducer_a1_field);
@@ -509,7 +515,7 @@ void update_scales(void) {
 
 void update_solenoid_controller(void) {
 #ifdef ENABLE_SOLENOID_CONTROLLER
-    solenoid_controller_state_t solenoid_states = solenoid_controller_get();
+    solenoid_controller_state_t solenoid_states = solenoid_controller_get(&solenoid_controller);
 
     valve_np1_field.value.field_value.boolean = (solenoid_states & SOLENOID_0) > 0;
     valve_np2_field.value.field_value.boolean = (solenoid_states & SOLENOID_1) > 0;

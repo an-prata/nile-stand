@@ -6,40 +6,47 @@
 
 #include "solenoid_controller.h"
 
+#define OPEN '|'
+#define CLOSED '-'
+
 static solenoid_controller_state_t controller_state = 0;
-static i2c_master_dev_handle_t controller = NULL;
 
-void solenoid_controller_setup(solenoid_controller_pins_t pins) {
-    if (controller) {
-        return;
+void solenoid_controller_init(
+    solenoid_controller_t* solenoid_controller,
+    uart_port_t port,
+    gpio_num_t pin_tx,
+    gpio_num_t pin_rx
+) {
+    uart_init(&solenoid_controller->uart, port, pin_tx, pin_rx);
+}
+
+void solenoid_controller_open(solenoid_controller_t* solenoid_controller, solenoid_controller_state_t state) {
+    solenoid_controller->state |= state;
+}
+
+void solenoid_controller_close(solenoid_controller_t* solenoid_controller, solenoid_controller_state_t state) {
+    solenoid_controller->state &= ~state;
+}
+
+void solenoid_controller_push(solenoid_controller_t* solenoid_controller) {
+    char msg[sizeof solenoid_controller->state * 8 + 2];
+
+    for (int i = 0; i < sizeof solenoid_controller->state * 8; i++) {
+        msg[i + 1] = (solenoid_controller->state & (1 << i)) 
+            ? OPEN
+            : CLOSED;
     }
-    
-    i2c_device_config_t conf = {
-        .device_address = 0x0F,
-        .dev_addr_length = I2C_ADDR_BIT_7,
-        .scl_speed_hz = 400000,
-    };
 
-    i2c_device_add(&controller, &conf);
+    msg[0] = '\n';
+    msg[sizeof solenoid_controller->state * 8 + 1] = '\n';
+
+    uart_send(&solenoid_controller->uart, msg, sizeof solenoid_controller->state * 8 + 2);
 }
 
-void solenoid_controller_open(solenoid_controller_state_t state) {
-    controller_state |= state;
+void solenoid_controller_set(solenoid_controller_t* solenoid_controller, solenoid_controller_state_t state) {
+    solenoid_controller->state = state;
 }
 
-void solenoid_controller_close(solenoid_controller_state_t state) {
-    controller_state &= ~state;
-}
-
-void solenoid_controller_push(solenoid_controller_pins_t pins) {
-    solenoid_controller_set(pins, controller_state);
-}
-
-void solenoid_controller_set(solenoid_controller_pins_t pins, solenoid_controller_state_t state) {
-    controller_state = state;
-    i2c_write_raw(controller, (uint8_t*)&state, sizeof state);
-}
-
-solenoid_controller_state_t solenoid_controller_get(void) {
-    return controller_state;
+solenoid_controller_state_t solenoid_controller_get(solenoid_controller_t* solenoid_controller) {
+    return solenoid_controller->state;
 }
