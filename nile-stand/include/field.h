@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "uart.h"
 
 /**
  * Enumeration of the possible types that a serializable field (`field_t`) can
@@ -46,9 +47,10 @@ typedef struct {
 
 /**
  * Update a field of the given c-string `name` to be equal to the given
- * `field_value_t` by sending that name and value (with a type) over serial.
+ * `field_value_t` by sending that name and value (with a type) over serial
+ * using the given print function.
  */
-void update_field(field_t field);
+void update_field(uart_t* uart, field_t field);
 
 /**
  * The type of a command, what action it represents.

@@ -22,9 +22,6 @@
 #define ENABLE_SOLENOID_CONTROLLER
 #define ENABLE_RATE_TRACKING
 
-#define SERIAL_UART
-//#define SERIAL_USB
-
 #ifdef ENABLE_SOLENOID_CONTROLLER
 static solenoid_controller_pins_t solenoid_pins = {
     .clock = GPIO_NUM_16,
@@ -286,6 +283,8 @@ static field_t update_time_field = {
 
 #define RX_BUF_LEN 256
 
+uart_t rs485_transmit;
+
 char rx_buf[RX_BUF_LEN] = { '\0' };
 size_t rx_idx = 0;
 
@@ -323,7 +322,7 @@ void update_scales(void);
 void update_solenoid_controller(void);
 
 void app_main() {
-    uart_init();
+    uart_init(&rs485_transmit, UART_NUM_2, GPIO_NUM_4, GPIO_NUM_5);
 
 #ifdef ENABLE_PTS
     i2c_init();
@@ -353,14 +352,8 @@ void app_main() {
 
         // Handle commands
 
-#ifdef SERIAL_USB
-        rx_idx += fread(rx_buf, sizeof(char), RX_BUF_LEN, stdin);
-#endif  /* SERIAL_USB */
-
-#ifdef SERIAL_UART
-        rx_idx += uart_recieve(rx_buf, RX_BUF_LEN - 1);
-        rx_buf[rx_idx] = '\0';
-#endif  /* SERIAL_UART */
+        rx_idx += uart_recieve(&rs485_transmit, rx_buf, RX_BUF_LEN - 1);
+        rx_buf[rx_idx] = '\0'; 
 
         command_reader_buffer(&command_reader, rx_buf);
 
@@ -396,8 +389,8 @@ void app_main() {
         update_time_field.value.field_value.floating = timing_delta_time_s();
         update_rate_field.value.field_value.floating = 1.0 / update_time_field.value.field_value.floating;
 
-        update_field(update_time_field);
-        update_field(update_rate_field);
+        update_field(&rs485_transmit, update_time_field);
+        update_field(&rs485_transmit, update_rate_field);
 #endif  /* ENABLE_RATE_TRACKING */
 
         wdt_hal_context_t rtc_wdt_ctx = RWDT_HAL_CONTEXT_DEFAULT();
@@ -474,10 +467,10 @@ void update_pts(void) {
     pressure_transducer_a2_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A2));
     pressure_transducer_a3_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A3));
 
-    update_field(pressure_transducer_a0_field);
-    update_field(pressure_transducer_a1_field);
-    update_field(pressure_transducer_a2_field);
-    update_field(pressure_transducer_a3_field);
+    update_field(&rs485_transmit, pressure_transducer_a0_field);
+    update_field(&rs485_transmit, pressure_transducer_a1_field);
+    update_field(&rs485_transmit, pressure_transducer_a2_field);
+    update_field(&rs485_transmit, pressure_transducer_a3_field);
 #endif  /* ENABLE_PTS */
 }
 
@@ -504,13 +497,13 @@ void update_scales(void) {
     scale_thrust_field.value.field_value.floating = new_scale_thrust_value;
     scale_thrust_rate_field.value.field_value.floating = scale_thrust_value_rate;
 
-    update_field(scale_ox_field);
-    update_field(scale_ox_rate_field);
-    update_field(scale_fuel_field);
-    update_field(scale_fuel_rate_field);
-    update_field(ox_fuel_ratio_field);
-    update_field(scale_thrust_field);
-    update_field(scale_thrust_rate_field);
+    update_field(&rs485_transmit, scale_ox_field);
+    update_field(&rs485_transmit, scale_ox_rate_field);
+    update_field(&rs485_transmit, scale_fuel_field);
+    update_field(&rs485_transmit, scale_fuel_rate_field);
+    update_field(&rs485_transmit, ox_fuel_ratio_field);
+    update_field(&rs485_transmit, scale_thrust_field);
+    update_field(&rs485_transmit, scale_thrust_rate_field);
 #endif  /* ENABLE_LCS */
 }
 
@@ -532,16 +525,16 @@ void update_solenoid_controller(void) {
     valve_ip2_field.value.field_value.boolean = (solenoid_states & SOLENOID_4) > 0;
     valve_ip3_field.value.field_value.boolean = (solenoid_states & SOLENOID_5) == 0;
 
-    update_field(valve_np1_field);
-    update_field(valve_np2_field);
-    update_field(valve_np3_field);
-    update_field(valve_np4_field);
+    update_field(&rs485_transmit, valve_np1_field);
+    update_field(&rs485_transmit, valve_np2_field);
+    update_field(&rs485_transmit, valve_np3_field);
+    update_field(&rs485_transmit, valve_np4_field);
 
     if (double_action_valve_triggered) {
-        update_field(valve_ip1_field);
+        update_field(&rs485_transmit, valve_ip1_field);
     }
 
-    update_field(valve_ip2_field);
-    update_field(valve_ip3_field);
+    update_field(&rs485_transmit, valve_ip2_field);
+    update_field(&rs485_transmit, valve_ip3_field);
 #endif
 }

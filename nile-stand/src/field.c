@@ -1,9 +1,6 @@
 #include "field.h"
 #include "uart.h"
 
-// Replace the `printf` with a call to a function which prints over UART.
-//#define SERIAL_PRINT(s) printf("%s", s)
-#define SERIAL_PRINT(s) uart_send(s)
 #define SERIAL_PRINT_BUFFER_LEN 128
 
 #define COMMAND_MSG_OPEN "OPEN"
@@ -53,12 +50,13 @@ static valve_e parse_valve(const char* base) {
 	return NONE;
 }
 
-void update_field(field_t field) {
+void update_field(uart_t* uart, field_t field) {
     char buf[SERIAL_PRINT_BUFFER_LEN] = { 0 };
+	int len;
 
     switch (field.value.field_type) {
         case FIELD_TYPE_UNSIGNED_INT:
-            snprintf(
+            len = snprintf(
                 buf,
                 SERIAL_PRINT_BUFFER_LEN,
                 "%s:u=%llu\n",
@@ -69,7 +67,7 @@ void update_field(field_t field) {
             break;
 
         case FIELD_TYPE_SIGNED_INT:
-            snprintf(
+            len = snprintf(
                 buf,
                 SERIAL_PRINT_BUFFER_LEN,
                 "%s:i=%lli\n",
@@ -80,7 +78,7 @@ void update_field(field_t field) {
             break;
 
         case FIELD_TYPE_FLOAT:
-            snprintf(
+            len = snprintf(
                 buf,
                 SERIAL_PRINT_BUFFER_LEN,
                 "%s:f=%f\n",
@@ -92,14 +90,14 @@ void update_field(field_t field) {
 
         case FIELD_TYPE_BOOLEAN:
             if (field.value.field_value.boolean) {
-                snprintf(
+                len = snprintf(
                     buf,
                     SERIAL_PRINT_BUFFER_LEN,
                     "%s:b=TRUE\n",
                     field.name
                 );
             } else {
-                snprintf(
+                len = snprintf(
                     buf,
                     SERIAL_PRINT_BUFFER_LEN,
                     "%s:b=FALSE\n",
@@ -113,7 +111,7 @@ void update_field(field_t field) {
             return;
     }
 
-    SERIAL_PRINT(buf);
+    uart_send(uart, buf, (size_t)len);
 }
 
 int parse_command(const char* str, command_t* command) {
