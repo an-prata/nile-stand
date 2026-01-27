@@ -6,6 +6,8 @@
 
 #include "uart.h"
 
+typedef uint16_t solenoid_controller_state_t;
+
 typedef struct {
     uart_t uart;
     solenoid_controller_state_t state;
@@ -24,8 +26,6 @@ typedef struct {
 #define SIGNAL_LIGHT_1 0x0400
 #define SIGNAL_LIGHT_2 0x0800
 #define SIGNAL_LIGHT_3 0x1000
-
-typedef uint16_t solenoid_controller_state_t;
 
 /**
  * Set up a solenoid controller. This function may be called more than once, and

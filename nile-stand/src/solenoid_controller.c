@@ -9,8 +9,6 @@
 #define OPEN '|'
 #define CLOSED '-'
 
-static solenoid_controller_state_t controller_state = 0;
-
 void solenoid_controller_init(
     solenoid_controller_t* solenoid_controller,
     uart_port_t port,
