@@ -1,20 +1,15 @@
 #include <stdbool.h>
-#include <driver/gpio.h>
-#include <esp_task_wdt.h>
-#include <esp_timer.h>
-#include <unistd.h>
-#include <hal/wdt_hal.h>
 
-#include "field.h"
-#include "pressure_transducer.h"
-#include "i2c.h"
 #include "ads111x.h"
-#include "solenoid_controller.h"
-#include "uart.h"
-#include "rs485.h"
-#include "scales.h"
-#include "timing.h"
+#include "field.h"
 #include "hx711.h"
+#include "i2c.h"
+#include "pressure_transducer.h"
+#include "rs485.h"
+#include "timing.h"
+#include "uart.h"
+#include "scales.h"
+#include "solenoid_controller.h"
 
 #define IGNITE_TIME_S 10.0
 
@@ -396,10 +391,10 @@ void app_main() {
         update_field(&rs485.write, update_rate_field);
 #endif  /* ENABLE_RATE_TRACKING */
 
-        wdt_hal_context_t rtc_wdt_ctx = RWDT_HAL_CONTEXT_DEFAULT();
+        /* wdt_hal_context_t rtc_wdt_ctx = RWDT_HAL_CONTEXT_DEFAULT();
         wdt_hal_write_protect_disable(&rtc_wdt_ctx);
         wdt_hal_feed(&rtc_wdt_ctx);
-        wdt_hal_write_protect_enable(&rtc_wdt_ctx);
+        wdt_hal_write_protect_enable(&rtc_wdt_ctx); */
     }
 }
 
