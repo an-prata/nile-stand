@@ -1,5 +1,5 @@
 #include "field.h"
-#include "uart.h"
+#include "rs485.h"
 
 #define SERIAL_PRINT_BUFFER_LEN 128
 
@@ -50,8 +50,8 @@ static valve_e parse_valve(const char* base) {
 	return NONE;
 }
 
-void update_field(uart_t* uart, field_t field) {
-    char buf[SERIAL_PRINT_BUFFER_LEN] = { 0 };
+size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field) {
+    char field[SERIAL_PRINT_BUFFER_LEN] = { 0 };
 	int len;
 
     switch (field.value.field_type) {
@@ -111,7 +111,12 @@ void update_field(uart_t* uart, field_t field) {
             return;
     }
 
-    uart_send(uart, buf, (size_t)len);
+	if (buf_idx + len >= buf_len) {
+		return 0;
+	}
+
+	memcpy(buf + buf_idx, &field, len);
+	return len;
 }
 
 int parse_command(const char* str, command_t* command) {

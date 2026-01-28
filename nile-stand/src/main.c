@@ -274,12 +274,13 @@ static field_t update_time_field = {
 };
 #endif  /* ENABLE_RATE_TRACKING */
 
-#define RX_BUF_LEN 256
+#define RX_BUF_LEN 1024
+#define TX_BUF_LEN (1024 * 4)
 
+char rx_buf[RX_BUF_LEN];
+char tx_buf[TX_BUF_LEN];
+size_t tx_idx = 0;
 rs485_t rs485;
-
-char rx_buf[RX_BUF_LEN] = { '\0' };
-size_t rx_idx = 0;
 
 /*
  * Helpers for solenoid control.
@@ -315,7 +316,7 @@ void update_scales(void);
 void update_solenoid_controller(void);
 
 void app_main() {
-    rs485_init(&rs485, UART_NUM_2, GPIO_NUM_4, GPIO_NUM_5, -1, -1, -1);
+    rs485_init(&rs485, RS485_PRIMARY, UART_NUM_2, GPIO_NUM_4, GPIO_NUM_5);
 
 #ifdef ENABLE_PTS
     i2c_init();
@@ -350,8 +351,9 @@ void app_main() {
 
         // Handle commands
 
-        rx_idx += rs485_recieve(&rs485, rx_buf, RX_BUF_LEN - 1);
-        rx_buf[rx_idx] = '\0'; 
+        size_t recieved = rs485_transact(&rs485, tx_buf, tx_idx, rx_buf, RX_BUF_LEN - 1);
+        rx_buf[recieved] = '\0'; 
+        tx_idx = 0;
 
         command_reader_buffer(&command_reader, rx_buf);
 
@@ -371,9 +373,6 @@ void app_main() {
             #endif  /* ENABLE_SOLENOID_CONTROLLER */
         }
 
-        memset(rx_buf, '\0', RX_BUF_LEN);
-        rx_idx = 0;
-
         // Update the solenoid controller, this should be done later in the loop since it blocks for
         // some time if enough time has not yet elapsed between calls, in which we ideally perform
         // some computation/gather data elsewhere.
@@ -387,8 +386,8 @@ void app_main() {
         update_time_field.value.field_value.floating = timing_delta_time_s();
         update_rate_field.value.field_value.floating = 1.0 / update_time_field.value.field_value.floating;
 
-        update_field(&rs485.write, update_time_field);
-        update_field(&rs485.write, update_rate_field);
+        tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, update_time_field);
+        tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, update_rate_field);
 #endif  /* ENABLE_RATE_TRACKING */
 
         /* wdt_hal_context_t rtc_wdt_ctx = RWDT_HAL_CONTEXT_DEFAULT();
@@ -469,10 +468,10 @@ void update_pts(void) {
     pressure_transducer_a3_field.value.field_value.floating 
         = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A3));
 
-    update_field(&rs485, pressure_transducer_a0_field);
-    update_field(&rs485, pressure_transducer_a1_field);
-    update_field(&rs485, pressure_transducer_a2_field);
-    update_field(&rs485, pressure_transducer_a3_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, pressure_transducer_a0_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, pressure_transducer_a1_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, pressure_transducer_a2_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, pressure_transducer_a3_field);
 #endif  /* ENABLE_PTS */
 }
 
@@ -499,13 +498,13 @@ void update_scales(void) {
     scale_thrust_field.value.field_value.floating = new_scale_thrust_value;
     scale_thrust_rate_field.value.field_value.floating = scale_thrust_value_rate;
 
-    update_field(&rs485.write, scale_ox_field);
-    update_field(&rs485.write, scale_ox_rate_field);
-    update_field(&rs485.write, scale_fuel_field);
-    update_field(&rs485.write, scale_fuel_rate_field);
-    update_field(&rs485.write, ox_fuel_ratio_field);
-    update_field(&rs485.write, scale_thrust_field);
-    update_field(&rs485.write, scale_thrust_rate_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_ox_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_ox_rate_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_fuel_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_fuel_rate_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, ox_fuel_ratio_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_thrust_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_thrust_rate_field);
 #endif  /* ENABLE_LCS */
 }
 
@@ -527,16 +526,16 @@ void update_solenoid_controller(void) {
     valve_ip2_field.value.field_value.boolean = (solenoid_states & SOLENOID_4) > 0;
     valve_ip3_field.value.field_value.boolean = (solenoid_states & SOLENOID_5) == 0;
 
-    update_field(&rs485.write, valve_np1_field);
-    update_field(&rs485.write, valve_np2_field);
-    update_field(&rs485.write, valve_np3_field);
-    update_field(&rs485.write, valve_np4_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_np1_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_np2_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_np3_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_np4_field);
 
     if (double_action_valve_triggered) {
-        update_field(&rs485.write, valve_ip1_field);
+        tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_ip1_field);
     }
 
-    update_field(&rs485.write, valve_ip2_field);
-    update_field(&rs485.write, valve_ip3_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_ip2_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_ip3_field);
 #endif
 }
