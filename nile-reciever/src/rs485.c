@@ -4,11 +4,11 @@
 static const char handoff_buf = RS485_HANDOFF_CHAR;
 
 static void rs485_send(rs485_t* rs485, const char* msg, size_t n) {
-    uart_send(&rs485, msg, n);
+    uart_send(&rs485->uart, msg, n);
 }
 
 static size_t rs485_recieve(rs485_t* rs485, char* msg, size_t n) {
-    return uart_recieve(&rs485, msg, n);
+    return uart_recieve(&rs485->uart, msg, n);
 }
 
 void rs485_init(
@@ -18,14 +18,14 @@ void rs485_init(
     int read_tx,
     int read_rx
 ) {
-    uart_rs485_init(&rs485, read_port, read_tx, read_rx);
+    uart_rs485_init(&rs485->uart, read_port, read_tx, read_rx);
     rs485->priority = priority;
 
     /* 
      * Secondaries can safely assume they are waiting to read because primaries
      * will detect the state of system as a whole on startup.
      */
-    
+
     if (priority == RS485_SECONDARY) {
         rs485->control_state = RS485_WAITING;
     } else {
@@ -51,7 +51,7 @@ recieve:
     }
     
     if (rs485->control_state == RS485_ACTIVE && tx_len > 0) {
-        rs485_send(rs485, tx_buf, tx_buf);
+        rs485_send(rs485, tx_buf, tx_len);
         rs485_send(rs485, &handoff_buf, 1);  /* Always handoff after a write. */
         rs485->control_state = RS485_WAITING;
         tx_len = 0;
