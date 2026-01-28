@@ -20,7 +20,17 @@ void rs485_init(
 ) {
     uart_rs485_init(&rs485, read_port, read_tx, read_rx);
     rs485->priority = priority;
-    rs485->control_state = RS485_UNKNOWN;
+
+    /* 
+     * Secondaries can safely assume they are waiting to read because primaries
+     * will detect the state of system as a whole on startup.
+     */
+    
+    if (priority == RS485_SECONDARY) {
+        rs485->control_state = RS485_WAITING;
+    } else {
+        rs485->control_state = RS485_UNKNOWN;
+    }
 }
 
 size_t rs485_transact(rs485_t* rs485, const char* tx_buf, size_t tx_len, char* rx_buf, size_t rx_len) {
