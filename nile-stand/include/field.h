@@ -48,8 +48,8 @@ typedef struct {
 /**
  * Append to the given string, starting at the given index, with the field
  * update text which should be sent to update the console. This function returns
- * the number of bytes written to the given buffer, which may be zero if not
- * enough space is available.
+ * the number of bytes written to the given buffer, which may not be the whole
+ * length of the field's string representation if there is not enough space.
  */
 size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field);
 

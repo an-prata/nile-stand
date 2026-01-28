@@ -51,23 +51,18 @@ static valve_e parse_valve(const char* base) {
 }
 
 size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field) {
-    char field[SERIAL_PRINT_BUFFER_LEN] = { 0 };
-	int len;
-
     switch (field.value.field_type) {
         case FIELD_TYPE_UNSIGNED_INT:
-            len = snprintf(
+            return (size_t)snprintf(
                 buf,
-                SERIAL_PRINT_BUFFER_LEN,
+                buf_len - buf_idx,
                 "%s:u=%llu\n",
                 field.name,
                 field.value.field_value.unsigned_int
             );
 
-            break;
-
         case FIELD_TYPE_SIGNED_INT:
-            len = snprintf(
+            return snprintf(
                 buf,
                 SERIAL_PRINT_BUFFER_LEN,
                 "%s:i=%lli\n",
@@ -75,48 +70,35 @@ size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field) {
                 field.value.field_value.signed_int
             );
 
-            break;
-
         case FIELD_TYPE_FLOAT:
-            len = snprintf(
+            return snprintf(
                 buf,
-                SERIAL_PRINT_BUFFER_LEN,
+                buf_len - buf_idx,
                 "%s:f=%f\n",
                 field.name,
                 field.value.field_value.floating
             );
 
-            break;
-
         case FIELD_TYPE_BOOLEAN:
             if (field.value.field_value.boolean) {
-                len = snprintf(
+                return snprintf(
                     buf,
-                    SERIAL_PRINT_BUFFER_LEN,
+	                buf_len - buf_idx,
                     "%s:b=TRUE\n",
                     field.name
                 );
             } else {
-                len = snprintf(
+                return snprintf(
                     buf,
-                    SERIAL_PRINT_BUFFER_LEN,
+       	        	buf_len - buf_idx,
                     "%s:b=FALSE\n",
                     field.name
                 );
             }
-
-            break;
             
         default:
-            return;
+            return 0;
     }
-
-	if (buf_idx + len >= buf_len) {
-		return 0;
-	}
-
-	memcpy(buf + buf_idx, &field, len);
-	return len;
 }
 
 int parse_command(const char* str, command_t* command) {
