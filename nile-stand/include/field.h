@@ -23,8 +23,8 @@ typedef enum {
  * Value of a `field_value_t`, a union of all possible types of data for fields.
  */
 typedef union {
-    uint64_t unsigned_int;
-    int64_t signed_int;
+    uint32_t unsigned_int;
+    int32_t signed_int;
     float floating;
     bool boolean;
 } field_value_u;

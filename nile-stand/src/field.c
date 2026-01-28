@@ -56,7 +56,7 @@ size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field) {
             return (size_t)snprintf(
                 buf,
                 buf_len - buf_idx,
-                "%s:u=%llu\n",
+                "%s:u=%lu\n",
                 field.name,
                 field.value.field_value.unsigned_int
             );
@@ -65,7 +65,7 @@ size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field) {
             return snprintf(
                 buf,
                 SERIAL_PRINT_BUFFER_LEN,
-                "%s:i=%lli\n",
+                "%s:i=%li\n",
                 field.name,
                 field.value.field_value.signed_int
             );
