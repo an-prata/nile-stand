@@ -4,6 +4,7 @@
 #include "field.h"
 #include "hx711.h"
 #include "i2c.h"
+#include "kalman_filter.h"
 #include "pressure_transducer.h"
 #include "rs485.h"
 #include "timing.h"
@@ -27,8 +28,12 @@ static solenoid_controller_t solenoid_controller;
  */
 
 #ifdef ENABLE_LCS
-static float scale_ox_value = 0.0;
-static float scale_ox_value_rate = 0.0;
+
+#define OX_KALMAN_INIT 1.0
+#define OX_KALMAN_R 1.0
+#define OX_KALMAN_Q 1.0
+
+static kalman_filter_t scale_ox_kalman;
 
 static field_t scale_ox_field = {
     .name = "Scale Ox",
@@ -55,8 +60,11 @@ static field_t scale_ox_rate_field = {
  * Fuel Scale
  */
 
-static float scale_fuel_value = 0.0;
-static float scale_fuel_value_rate = 0.0;
+#define FUEL_KALMAN_INIT 1.0
+#define FUEL_KALMAN_R 1.0
+#define FUEL_KALMAN_Q 1.0
+
+static kalman_filter_t scale_fuel_kalman;
 
 static field_t scale_fuel_field = {
     .name = "Scale Fuel",
@@ -98,8 +106,11 @@ static field_t ox_fuel_ratio_field = {
  * Thrust Scale
  */
 
-static float scale_thrust_value = 0.0;
-static float scale_thrust_value_rate = 0.0;
+#define THRUST_KALMAN_INIT 1.0
+#define THRUST_KALMAN_R 1.0
+#define THRUST_KALMAN_Q 1.0
+
+static kalman_filter_t scale_thrust_kalman;
 
 static field_t scale_thrust_field = {
     .name = "Scale Thrust",
@@ -326,6 +337,10 @@ void app_main() {
 #ifdef ENABLE_LCS
     i2c_init();
     scales_init();
+
+    kalman_filter_init(&scale_ox_kalman, OX_KALMAN_INIT, OX_KALMAN_R, OX_KALMAN_Q);
+    kalman_filter_init(&scale_fuel_kalman, FUEL_KALMAN_INIT, FUEL_KALMAN_R, FUEL_KALMAN_Q);
+    kalman_filter_init(&scale_thrust_kalman, THRUST_KALMAN_INIT, THRUST_KALMAN_R, THRUST_KALMAN_Q);
 #endif
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
@@ -372,10 +387,6 @@ void app_main() {
             }
             #endif  /* ENABLE_SOLENOID_CONTROLLER */
         }
-
-        // Update the solenoid controller, this should be done later in the loop since it blocks for
-        // some time if enough time has not yet elapsed between calls, in which we ideally perform
-        // some computation/gather data elsewhere.
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
         set_e_match(false);
@@ -479,24 +490,24 @@ void update_scales(void) {
 #ifdef ENABLE_LCS
     scales_update();
 
-    float new_scale_ox_value = scales_get_ox();
-    scale_ox_value_rate = timing_d_dt(scale_ox_value, new_scale_ox_value);
-    scale_ox_value = new_scale_ox_value;
+    float new_scale_ox_value = kalman_estimate(&scale_ox_kalman, scales_get_ox());
+    scale_ox_rate_field.value.field_value.floating
+         = timing_d_dt(scale_ox_field.value.field_value.floating, new_scale_ox_value);
     scale_ox_field.value.field_value.floating = new_scale_ox_value;
-    scale_ox_rate_field.value.field_value.floating = scale_ox_value_rate;
 
-    float new_scale_fuel_value = scales_get_fuel();
-    scale_fuel_value_rate = timing_d_dt(scale_fuel_value, new_scale_fuel_value);
-    scale_fuel_value = new_scale_fuel_value;
+    float new_scale_fuel_value = kalman_estimate(&scale_fuel_kalman, scales_get_fuel());
+    scale_fuel_rate_field.value.field_value.floating
+        = timing_d_dt(scale_fuel_field.value.field_value.floating, new_scale_fuel_value);
     scale_fuel_field.value.field_value.floating = new_scale_fuel_value;
-    scale_fuel_rate_field.value.field_value.floating = scale_fuel_value_rate;
 
-    ox_fuel_ratio_field.value.field_value.floating = scale_ox_value_rate / scale_fuel_value_rate;
+    ox_fuel_ratio_field.value.field_value.floating 
+        = scale_ox_rate_field.value.field_value.floating 
+        / scale_fuel_rate_field.value.field_value.floating;
 
-    float new_scale_thrust_value = scales_get_thrust();
-    scale_thrust_value_rate = timing_d_dt(scale_thrust_value, new_scale_thrust_value);
+    float new_scale_thrust_value = kalman_estimate(&scale_thrust_kalman, scales_get_thrust());
+    scale_thrust_rate_field.value.field_value.floating
+        = timing_d_dt(scale_thrust_field.value.field_value.floating, new_scale_thrust_value);
     scale_thrust_field.value.field_value.floating = new_scale_thrust_value;
-    scale_thrust_rate_field.value.field_value.floating = scale_thrust_value_rate;
 
     tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_ox_field);
     tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_ox_rate_field);
