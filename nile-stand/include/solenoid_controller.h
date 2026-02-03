@@ -75,4 +75,11 @@ void solenoid_controller_set(solenoid_controller_t* solenoid_controller, solenoi
  */
 solenoid_controller_state_t solenoid_controller_get(solenoid_controller_t* solenoid_controller);
 
+/**
+ * Attempt to recover an existing solenoid state from the solenoid controller.
+ * Returns `0` on success, and in this case the `state` field is set to the
+ * recovered state. Returns `1` otherwise.
+ */
+int solenoid_controller_try_recover_state(solenoid_controller_t* solenoid_controller);
+
 #endif  /* SOLENOID_CONTROLLER_H */

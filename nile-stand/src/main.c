@@ -350,6 +350,8 @@ void app_main() {
         UART_PIN_NO_CHANGE,
         UART_PIN_NO_CHANGE
     );
+
+    solenoid_controller_try_recover_state(&solenoid_controller);
 #endif
 
     command_reader_t command_reader = make_command_reader(NULL);

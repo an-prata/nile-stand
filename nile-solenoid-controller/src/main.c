@@ -8,7 +8,7 @@
 
 #include "uart.h"
 
-#define SOLENOID_COUNT 13
+#define SOLENOID_COUNT 16
 
 #define PIN_SOLENOID_0     GPIO_NUM_32
 #define PIN_SOLENOID_1     GPIO_NUM_33
