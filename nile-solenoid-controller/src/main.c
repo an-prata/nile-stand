@@ -43,6 +43,7 @@
 static size_t solenoid_idx = 1;
 static char solenoid_set_state[SOLENOID_COUNT + 1] = { '-' };
 static uint16_t solenoid_states;
+static bool state_initialized = false;
 static uart_t uart;
 
 static void pin_set(uint16_t mask, gpio_num_t pin) {
@@ -84,11 +85,14 @@ void app_main() {
 
             if (recieved == SOLENOID_COUNT) {
                 memcpy(solenoid_set_state, buf, SOLENOID_COUNT);
+                state_initialized = true;
             }
         }
 
-        solenoid_set_state[SOLENOID_COUNT] = '\n';
-        uart_send(&uart, solenoid_set_state, SOLENOID_COUNT + 1);
+        if (state_initialized) {
+            solenoid_set_state[SOLENOID_COUNT] = '\n';
+            uart_send(&uart, solenoid_set_state, SOLENOID_COUNT + 1);
+        }
 
         vTaskDelay(10);
     }
