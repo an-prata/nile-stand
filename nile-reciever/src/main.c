@@ -18,7 +18,6 @@ void app_main() {
         size_t bytes_in_usb = fread(buffer_usb, sizeof *buffer_usb, BUFFER_SIZE, stdin);
         size_t bytes_in_uart = rs485_transact(&rs485, buffer_usb, bytes_in_usb, buffer_uart, BUFFER_SIZE);
         fwrite(buffer_uart, sizeof *buffer_uart, bytes_in_uart, stdout);
-
         vTaskDelay(5);
     }
 }

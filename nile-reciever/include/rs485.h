@@ -5,6 +5,7 @@
 
 #define RS485_HANDOFF_CHAR '\r'
 #define RS485_MAX_CONTROL_GAP_US (500 * 1000)  /* 500 Milliseconds */
+#define RS485_MAX_NO_RECIEVES 16
 
 typedef enum {
     RS485_ACTIVE,   /* Currently being waited on for a write. */

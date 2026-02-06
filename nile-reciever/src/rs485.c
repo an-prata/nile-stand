@@ -34,31 +34,68 @@ void rs485_init(
 }
 
 size_t rs485_transact(rs485_t* rs485, const char* tx_buf, size_t tx_len, char* rx_buf, size_t rx_len) {
+    static size_t no_recieves = 0;
     size_t recieved = 0;
 
-    if (rs485->control_state == RS485_UNKNOWN) {
+    if (rs485->control_state == RS485_UNKNOWN || no_recieves == RS485_MAX_NO_RECIEVES) {
         rs485_detect_state(rs485);
     }
 
-recieve:
-    if (rs485->control_state == RS485_WAITING && recieved == 0) {
-        recieved = rs485_recieve(rs485, rx_buf, rx_len);
+    if (rs485->priority == RS485_PRIMARY) {
+        if (rs485->control_state == RS485_WAITING) {
+            recieved = rs485_recieve(rs485, rx_buf, rx_len);
 
-        if (recieved != 0 && rx_buf[recieved - 1] == RS485_HANDOFF_CHAR) {
-            /* This device has been handed control over the RS485 connection. */
-            rs485->control_state = RS485_ACTIVE;
+            if (recieved != 0 && rx_buf[recieved - 1] == RS485_HANDOFF_CHAR) {
+                /* This device has been handed control over the RS485 connection. */
+                rs485->control_state = RS485_ACTIVE;
+                rx_buf[recieved - 1] = '\0';
+                no_recieves = 0;
+            } else if (recieved != 0) {
+            } else {
+                no_recieves++;
+            }
         }
+        
+        if (rs485->control_state == RS485_ACTIVE) {
+            if (tx_len > 0) {
+                rs485_send(rs485, tx_buf, tx_len);
+            }
+
+            rs485_send(rs485, &handoff_buf, 1);  /* Always handoff after a write. */
+            rs485->control_state = RS485_WAITING;
+        }
+        
+        return recieved;
     }
-    
-    if (rs485->control_state == RS485_ACTIVE && tx_len > 0) {
-        rs485_send(rs485, tx_buf, tx_len);
-        rs485_send(rs485, &handoff_buf, 1);  /* Always handoff after a write. */
-        rs485->control_state = RS485_WAITING;
-        tx_len = 0;
-        goto recieve;
+
+    if (rs485->priority == RS485_SECONDARY) {
+        if (rs485->control_state == RS485_ACTIVE) {
+            if (tx_len > 0) {
+                rs485_send(rs485, tx_buf, tx_len);
+            }
+
+            rs485_send(rs485, &handoff_buf, 1);  /* Always handoff after a write. */
+            rs485->control_state = RS485_WAITING;
+        }
+
+        if (rs485->control_state == RS485_WAITING) {
+            recieved = rs485_recieve(rs485, rx_buf, rx_len);
+
+            if (recieved != 0 && rx_buf[recieved - 1] == RS485_HANDOFF_CHAR) {
+                /* This device has been handed control over the RS485 connection. */
+                rs485->control_state = RS485_ACTIVE;
+                rx_buf[recieved - 1] = '\0';
+                no_recieves = 0;
+            } else if (recieved != 0) {
+            } else {
+                no_recieves++;
+            }
+        }
+        
+        return recieved;
     }
-    
-    return recieved;
+
+    return 0;
 }
 
 void rs485_detect_state(rs485_t* rs485) {

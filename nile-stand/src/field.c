@@ -54,7 +54,7 @@ size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field) {
     switch (field.value.field_type) {
         case FIELD_TYPE_UNSIGNED_INT:
             return (size_t)snprintf(
-                buf,
+                buf + buf_idx,
                 buf_len - buf_idx,
                 "%s:u=%lu\n",
                 field.name,
@@ -63,7 +63,7 @@ size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field) {
 
         case FIELD_TYPE_SIGNED_INT:
             return snprintf(
-                buf,
+                buf + buf_idx,
                 SERIAL_PRINT_BUFFER_LEN,
                 "%s:i=%li\n",
                 field.name,
@@ -72,7 +72,7 @@ size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field) {
 
         case FIELD_TYPE_FLOAT:
             return snprintf(
-                buf,
+                buf + buf_idx,
                 buf_len - buf_idx,
                 "%s:f=%f\n",
                 field.name,
@@ -82,14 +82,14 @@ size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field) {
         case FIELD_TYPE_BOOLEAN:
             if (field.value.field_value.boolean) {
                 return snprintf(
-                    buf,
+                    buf + buf_idx,
 	                buf_len - buf_idx,
                     "%s:b=TRUE\n",
                     field.name
                 );
             } else {
                 return snprintf(
-                    buf,
+                    buf + buf_idx,
        	        	buf_len - buf_idx,
                     "%s:b=FALSE\n",
                     field.name

@@ -14,8 +14,8 @@
 
 #define IGNITE_TIME_S 10.0
 
-//#define ENABLE_PTS
-#define ENABLE_LCS
+#define ENABLE_PTS
+//#define ENABLE_LCS
 #define ENABLE_SOLENOID_CONTROLLER
 #define ENABLE_RATE_TRACKING
 
@@ -346,12 +346,10 @@ void app_main() {
 #ifdef ENABLE_SOLENOID_CONTROLLER
     solenoid_controller_init(
         &solenoid_controller,
-        UART_NUM_0,
-        UART_PIN_NO_CHANGE,
-        UART_PIN_NO_CHANGE
+        UART_NUM_1,
+        GPIO_NUM_18,
+        GPIO_NUM_19
     );
-
-    solenoid_controller_try_recover_state(&solenoid_controller);
 #endif
 
     command_reader_t command_reader = make_command_reader(NULL);
@@ -371,6 +369,16 @@ void app_main() {
         size_t recieved = rs485_transact(&rs485, tx_buf, tx_idx, rx_buf, RX_BUF_LEN - 1);
         rx_buf[recieved] = '\0'; 
         tx_idx = 0;
+
+        field_t recieved_field = {
+            .name = "Bytes Recieved",
+            .value = {
+                .field_type = FIELD_TYPE_UNSIGNED_INT,
+                .field_value = { .unsigned_int = recieved }
+            }
+        };
+
+        tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, recieved_field);
 
         command_reader_buffer(&command_reader, rx_buf);
 
@@ -492,12 +500,14 @@ void update_scales(void) {
 #ifdef ENABLE_LCS
     scales_update();
 
-    float new_scale_ox_value = kalman_estimate(&scale_ox_kalman, scales_get_ox());
+    //float new_scale_ox_value = kalman_estimate(&scale_ox_kalman, scales_get_ox());
+    float new_scale_ox_value = scales_get_ox();
     scale_ox_rate_field.value.field_value.floating
          = timing_d_dt(scale_ox_field.value.field_value.floating, new_scale_ox_value);
     scale_ox_field.value.field_value.floating = new_scale_ox_value;
 
-    float new_scale_fuel_value = kalman_estimate(&scale_fuel_kalman, scales_get_fuel());
+    //float new_scale_fuel_value = kalman_estimate(&scale_fuel_kalman, scales_get_fuel());
+    float new_scale_fuel_value = scales_get_fuel();
     scale_fuel_rate_field.value.field_value.floating
         = timing_d_dt(scale_fuel_field.value.field_value.floating, new_scale_fuel_value);
     scale_fuel_field.value.field_value.floating = new_scale_fuel_value;

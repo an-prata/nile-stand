@@ -8,7 +8,7 @@
 
 #include "uart.h"
 
-#define SOLENOID_COUNT 16
+#define SOLENOID_COUNT 12
 
 #define PIN_SOLENOID_0     GPIO_NUM_32
 #define PIN_SOLENOID_1     GPIO_NUM_33
@@ -40,21 +40,11 @@
 #define OPEN '|'
 #define CLOSED '-'
 
-static size_t solenoid_idx = 1;
-static char solenoid_set_state[SOLENOID_COUNT + 1] = { '-' };
-static uint16_t solenoid_states;
+static char solenoid_set_state[SOLENOID_COUNT] = { CLOSED };
+static size_t solenoid_idx = 0;
 static bool state_initialized = false;
-static uart_t uart;
 
-static void pin_set(uint16_t mask, gpio_num_t pin) {
-    if (solenoid_states & mask) {
-        gpio_set_level(pin, 1);
-        printf("Pin %i: HI\n", pin);
-    } else {
-        gpio_set_level(pin, 0);
-        printf("Pin %i: LO\n", pin);
-    }
-}
+static uart_t uart;
 
 void app_main() {
     gpio_set_direction(PIN_SOLENOID_0, GPIO_MODE_OUTPUT);
@@ -71,27 +61,60 @@ void app_main() {
     gpio_set_direction(PIN_SIGNAL_LIGHT_2, GPIO_MODE_OUTPUT);
     gpio_set_direction(PIN_SIGNAL_LIGHT_3, GPIO_MODE_OUTPUT);
 
-    uart_init(&uart, UART_NUM_2, GPIO_NUM_4, GPIO_NUM_5);
+    uart_init(&uart, UART_NUM_2, GPIO_NUM_22, GPIO_NUM_21);
 
     printf("Starting!\n");
 
-    while (1) {
+    while (!state_initialized) {
         char rx_char;
         size_t recieved = uart_recieve(&uart, &rx_char, 1);
-    
-        if (recieved == 1) {
-            char buf[SOLENOID_COUNT];
-            recieved = uart_recieve(&uart, buf, SOLENOID_COUNT);
 
-            if (recieved == SOLENOID_COUNT) {
-                memcpy(solenoid_set_state, buf, SOLENOID_COUNT);
-                state_initialized = true;
+        if (recieved != 1) {
+            continue;
+        }
+
+        if (rx_char == '\n') {
+            break;
+        }
+    }
+
+    while (1) {
+        char rx_char;
+        size_t recieved = 0;
+        
+        while ((recieved = uart_recieve(&uart, &rx_char, 1)) == 1) {
+            switch (rx_char) {
+                case '\n':
+                    solenoid_idx = 0;
+                    state_initialized = true;
+                    break;
+                
+                case OPEN:
+                    solenoid_set_state[solenoid_idx] = OPEN;
+                    solenoid_idx++;
+                    break;
+                
+                case CLOSED:
+                    solenoid_set_state[solenoid_idx] = CLOSED;
+                    solenoid_idx++;
+                    break;
             }
+
         }
 
         if (state_initialized) {
-            solenoid_set_state[SOLENOID_COUNT] = '\n';
-            uart_send(&uart, solenoid_set_state, SOLENOID_COUNT + 1);
+            char newline = '\n';
+            uart_send(&uart, &newline, 1);
+            uart_send(&uart, solenoid_set_state, SOLENOID_COUNT);
+            
+            gpio_set_level(PIN_SOLENOID_0, solenoid_set_state[0] == OPEN);
+            gpio_set_level(PIN_SOLENOID_1, solenoid_set_state[1] == OPEN);
+            gpio_set_level(PIN_SOLENOID_2, solenoid_set_state[2] == OPEN);
+            gpio_set_level(PIN_SOLENOID_3, solenoid_set_state[3] == OPEN);
+            gpio_set_level(PIN_SOLENOID_4, solenoid_set_state[4] == OPEN);
+            gpio_set_level(PIN_SOLENOID_5, solenoid_set_state[5] == OPEN);
+            gpio_set_level(PIN_SOLENOID_6, solenoid_set_state[6] == OPEN);
+            gpio_set_level(PIN_SOLENOID_7, solenoid_set_state[7] == OPEN);
         }
 
         vTaskDelay(10);
