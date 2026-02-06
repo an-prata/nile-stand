@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "uart.h"
+#include "rs485.h"
 
 /**
  * Enumeration of the possible types that a serializable field (`field_t`) can
@@ -23,8 +23,8 @@ typedef enum {
  * Value of a `field_value_t`, a union of all possible types of data for fields.
  */
 typedef union {
-    uint64_t unsigned_int;
-    int64_t signed_int;
+    uint32_t unsigned_int;
+    int32_t signed_int;
     float floating;
     bool boolean;
 } field_value_u;
@@ -46,11 +46,12 @@ typedef struct {
 } field_t;
 
 /**
- * Update a field of the given c-string `name` to be equal to the given
- * `field_value_t` by sending that name and value (with a type) over serial
- * using the given print function.
+ * Append to the given string, starting at the given index, with the field
+ * update text which should be sent to update the console. This function returns
+ * the number of bytes written to the given buffer, which may not be the whole
+ * length of the field's string representation if there is not enough space.
  */
-void update_field(uart_t* uart, field_t field);
+size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field);
 
 /**
  * The type of a command, what action it represents.

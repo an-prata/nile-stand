@@ -1,32 +1,26 @@
 #include <stdbool.h>
-#include <driver/gpio.h>
-#include <esp_task_wdt.h>
-#include <esp_timer.h>
-#include <unistd.h>
-#include <hal/wdt_hal.h>
 
-#include "field.h"
-#include "pressure_transducer.h"
-#include "i2c.h"
 #include "ads111x.h"
-#include "solenoid_controller.h"
+#include "field.h"
+#include "hx711.h"
+#include "i2c.h"
+#include "kalman_filter.h"
+#include "pressure_transducer.h"
+#include "rs485.h"
+#include "timing.h"
 #include "uart.h"
 #include "scales.h"
-#include "timing.h"
-#include "hx711.h"
+#include "solenoid_controller.h"
 
 #define IGNITE_TIME_S 10.0
 
-//#define ENABLE_PTS
-#define ENABLE_LCS
+#define ENABLE_PTS
+//#define ENABLE_LCS
 #define ENABLE_SOLENOID_CONTROLLER
 #define ENABLE_RATE_TRACKING
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
-static solenoid_controller_pins_t solenoid_pins = {
-    .clock = GPIO_NUM_16,
-    .data = GPIO_NUM_17,
-};
+static solenoid_controller_t solenoid_controller;
 #endif  /* ENABLE_SOLENOID_CONTROLLER */
 
 /*
@@ -34,8 +28,12 @@ static solenoid_controller_pins_t solenoid_pins = {
  */
 
 #ifdef ENABLE_LCS
-static float scale_ox_value = 0.0;
-static float scale_ox_value_rate = 0.0;
+
+#define OX_KALMAN_INIT 1.0
+#define OX_KALMAN_R 1.0
+#define OX_KALMAN_Q 1.0
+
+static kalman_filter_t scale_ox_kalman;
 
 static field_t scale_ox_field = {
     .name = "Scale Ox",
@@ -62,8 +60,11 @@ static field_t scale_ox_rate_field = {
  * Fuel Scale
  */
 
-static float scale_fuel_value = 0.0;
-static float scale_fuel_value_rate = 0.0;
+#define FUEL_KALMAN_INIT 1.0
+#define FUEL_KALMAN_R 1.0
+#define FUEL_KALMAN_Q 1.0
+
+static kalman_filter_t scale_fuel_kalman;
 
 static field_t scale_fuel_field = {
     .name = "Scale Fuel",
@@ -105,8 +106,11 @@ static field_t ox_fuel_ratio_field = {
  * Thrust Scale
  */
 
-static float scale_thrust_value = 0.0;
-static float scale_thrust_value_rate = 0.0;
+#define THRUST_KALMAN_INIT 1.0
+#define THRUST_KALMAN_R 1.0
+#define THRUST_KALMAN_Q 1.0
+
+static kalman_filter_t scale_thrust_kalman;
 
 static field_t scale_thrust_field = {
     .name = "Scale Thrust",
@@ -281,12 +285,13 @@ static field_t update_time_field = {
 };
 #endif  /* ENABLE_RATE_TRACKING */
 
-#define RX_BUF_LEN 256
+#define RX_BUF_LEN 1024
+#define TX_BUF_LEN (1024 * 4)
 
-uart_t rs485_transmit;
-
-char rx_buf[RX_BUF_LEN] = { '\0' };
-size_t rx_idx = 0;
+char rx_buf[RX_BUF_LEN];
+char tx_buf[TX_BUF_LEN];
+size_t tx_idx = 0;
+rs485_t rs485;
 
 /*
  * Helpers for solenoid control.
@@ -322,7 +327,7 @@ void update_scales(void);
 void update_solenoid_controller(void);
 
 void app_main() {
-    uart_init(&rs485_transmit, UART_NUM_2, GPIO_NUM_4, GPIO_NUM_5);
+    rs485_init(&rs485, RS485_PRIMARY, UART_NUM_2, GPIO_NUM_4, GPIO_NUM_5);
 
 #ifdef ENABLE_PTS
     i2c_init();
@@ -332,10 +337,19 @@ void app_main() {
 #ifdef ENABLE_LCS
     i2c_init();
     scales_init();
+
+    kalman_filter_init(&scale_ox_kalman, OX_KALMAN_INIT, OX_KALMAN_R, OX_KALMAN_Q);
+    kalman_filter_init(&scale_fuel_kalman, FUEL_KALMAN_INIT, FUEL_KALMAN_R, FUEL_KALMAN_Q);
+    kalman_filter_init(&scale_thrust_kalman, THRUST_KALMAN_INIT, THRUST_KALMAN_R, THRUST_KALMAN_Q);
 #endif
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
-    solenoid_controller_setup(solenoid_pins);
+    solenoid_controller_init(
+        &solenoid_controller,
+        UART_NUM_1,
+        GPIO_NUM_18,
+        GPIO_NUM_19
+    );
 #endif
 
     command_reader_t command_reader = make_command_reader(NULL);
@@ -352,8 +366,19 @@ void app_main() {
 
         // Handle commands
 
-        rx_idx += uart_recieve(&rs485_transmit, rx_buf, RX_BUF_LEN - 1);
-        rx_buf[rx_idx] = '\0'; 
+        size_t recieved = rs485_transact(&rs485, tx_buf, tx_idx, rx_buf, RX_BUF_LEN - 1);
+        rx_buf[recieved] = '\0'; 
+        tx_idx = 0;
+
+        field_t recieved_field = {
+            .name = "Bytes Recieved",
+            .value = {
+                .field_type = FIELD_TYPE_UNSIGNED_INT,
+                .field_value = { .unsigned_int = recieved }
+            }
+        };
+
+        tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, recieved_field);
 
         command_reader_buffer(&command_reader, rx_buf);
 
@@ -373,30 +398,23 @@ void app_main() {
             #endif  /* ENABLE_SOLENOID_CONTROLLER */
         }
 
-        memset(rx_buf, '\0', RX_BUF_LEN);
-        rx_idx = 0;
-
-        // Update the solenoid controller, this should be done later in the loop since it blocks for
-        // some time if enough time has not yet elapsed between calls, in which we ideally perform
-        // some computation/gather data elsewhere.
-
 #ifdef ENABLE_SOLENOID_CONTROLLER
         set_e_match(false);
-        solenoid_controller_push(solenoid_pins);
+        solenoid_controller_push(&solenoid_controller);
 #endif  /* ENABLE_SOLENOID_CONTROLLER */
 
 #ifdef ENABLE_RATE_TRACKING
         update_time_field.value.field_value.floating = timing_delta_time_s();
         update_rate_field.value.field_value.floating = 1.0 / update_time_field.value.field_value.floating;
 
-        update_field(&rs485_transmit, update_time_field);
-        update_field(&rs485_transmit, update_rate_field);
+        tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, update_time_field);
+        tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, update_rate_field);
 #endif  /* ENABLE_RATE_TRACKING */
 
-        wdt_hal_context_t rtc_wdt_ctx = RWDT_HAL_CONTEXT_DEFAULT();
+        /* wdt_hal_context_t rtc_wdt_ctx = RWDT_HAL_CONTEXT_DEFAULT();
         wdt_hal_write_protect_disable(&rtc_wdt_ctx);
         wdt_hal_feed(&rtc_wdt_ctx);
-        wdt_hal_write_protect_enable(&rtc_wdt_ctx);
+        wdt_hal_write_protect_enable(&rtc_wdt_ctx); */
     }
 }
 
@@ -404,13 +422,13 @@ void app_main() {
 void set_valve(valve_e valve, bool state) {
     // Handle the weird double action valve.
     if (valve == IP1 && state) {
-        solenoid_controller_open(SOLENOID_6);
-        solenoid_controller_close(SOLENOID_7);
+        solenoid_controller_open(&solenoid_controller, SOLENOID_6);
+        solenoid_controller_close(&solenoid_controller, SOLENOID_7);
         double_action_valve_triggered = true;
         return;
     } else if (valve == IP1 && !state) {
-        solenoid_controller_close(SOLENOID_6);
-        solenoid_controller_open(SOLENOID_7);
+        solenoid_controller_close(&solenoid_controller, SOLENOID_6);
+        solenoid_controller_open(&solenoid_controller, SOLENOID_7);
         double_action_valve_triggered = true;
         return;
     }
@@ -435,9 +453,9 @@ void set_valve(valve_e valve, bool state) {
     }
 
     if (state) {
-        solenoid_controller_open(solenoid);
+        solenoid_controller_open(&solenoid_controller, solenoid);
     } else {
-        solenoid_controller_close(solenoid);
+        solenoid_controller_close(&solenoid_controller, solenoid);
     }
 }
 
@@ -451,26 +469,30 @@ void set_e_match(bool state) {
 
     if (state) {
         ignite_marker = timing_mark();
-        solenoid_controller_open(E_MATCH);
+        solenoid_controller_open(&solenoid_controller, E_MATCH);
     }
 
     if (timing_time_since_s(ignite_marker) >= IGNITE_TIME_S) {
-        solenoid_controller_close(E_MATCH);
+        solenoid_controller_close(&solenoid_controller, E_MATCH);
     }
 }
 #endif  /* ENABLE_SOLENOID_CONTROLLER */
 
 void update_pts(void) {
 #ifdef ENABLE_PTS
-    pressure_transducer_a0_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A0));
-    pressure_transducer_a1_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A1));
-    pressure_transducer_a2_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A2));
-    pressure_transducer_a3_field.value.field_value.floating = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A3));
+    pressure_transducer_a0_field.value.field_value.floating
+        = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A0));
+    pressure_transducer_a1_field.value.field_value.floating
+        = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A1));
+    pressure_transducer_a2_field.value.field_value.floating
+        = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A2));
+    pressure_transducer_a3_field.value.field_value.floating 
+        = pt_psi_from_volts(ads111x_read_voltage(ADS111X_CHANNEL_A3));
 
-    update_field(&rs485_transmit, pressure_transducer_a0_field);
-    update_field(&rs485_transmit, pressure_transducer_a1_field);
-    update_field(&rs485_transmit, pressure_transducer_a2_field);
-    update_field(&rs485_transmit, pressure_transducer_a3_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, pressure_transducer_a0_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, pressure_transducer_a1_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, pressure_transducer_a2_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, pressure_transducer_a3_field);
 #endif  /* ENABLE_PTS */
 }
 
@@ -478,38 +500,40 @@ void update_scales(void) {
 #ifdef ENABLE_LCS
     scales_update();
 
+    //float new_scale_ox_value = kalman_estimate(&scale_ox_kalman, scales_get_ox());
     float new_scale_ox_value = scales_get_ox();
-    scale_ox_value_rate = timing_d_dt(scale_ox_value, new_scale_ox_value);
-    scale_ox_value = new_scale_ox_value;
+    scale_ox_rate_field.value.field_value.floating
+         = timing_d_dt(scale_ox_field.value.field_value.floating, new_scale_ox_value);
     scale_ox_field.value.field_value.floating = new_scale_ox_value;
-    scale_ox_rate_field.value.field_value.floating = scale_ox_value_rate;
 
+    //float new_scale_fuel_value = kalman_estimate(&scale_fuel_kalman, scales_get_fuel());
     float new_scale_fuel_value = scales_get_fuel();
-    scale_fuel_value_rate = timing_d_dt(scale_fuel_value, new_scale_fuel_value);
-    scale_fuel_value = new_scale_fuel_value;
+    scale_fuel_rate_field.value.field_value.floating
+        = timing_d_dt(scale_fuel_field.value.field_value.floating, new_scale_fuel_value);
     scale_fuel_field.value.field_value.floating = new_scale_fuel_value;
-    scale_fuel_rate_field.value.field_value.floating = scale_fuel_value_rate;
 
-    ox_fuel_ratio_field.value.field_value.floating = scale_ox_value_rate / scale_fuel_value_rate;
+    ox_fuel_ratio_field.value.field_value.floating 
+        = scale_ox_rate_field.value.field_value.floating 
+        / scale_fuel_rate_field.value.field_value.floating;
 
-    float new_scale_thrust_value = scales_get_thrust();
-    scale_thrust_value_rate = timing_d_dt(scale_thrust_value, new_scale_thrust_value);
+    float new_scale_thrust_value = kalman_estimate(&scale_thrust_kalman, scales_get_thrust());
+    scale_thrust_rate_field.value.field_value.floating
+        = timing_d_dt(scale_thrust_field.value.field_value.floating, new_scale_thrust_value);
     scale_thrust_field.value.field_value.floating = new_scale_thrust_value;
-    scale_thrust_rate_field.value.field_value.floating = scale_thrust_value_rate;
 
-    update_field(&rs485_transmit, scale_ox_field);
-    update_field(&rs485_transmit, scale_ox_rate_field);
-    update_field(&rs485_transmit, scale_fuel_field);
-    update_field(&rs485_transmit, scale_fuel_rate_field);
-    update_field(&rs485_transmit, ox_fuel_ratio_field);
-    update_field(&rs485_transmit, scale_thrust_field);
-    update_field(&rs485_transmit, scale_thrust_rate_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_ox_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_ox_rate_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_fuel_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_fuel_rate_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, ox_fuel_ratio_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_thrust_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, scale_thrust_rate_field);
 #endif  /* ENABLE_LCS */
 }
 
 void update_solenoid_controller(void) {
 #ifdef ENABLE_SOLENOID_CONTROLLER
-    solenoid_controller_state_t solenoid_states = solenoid_controller_get();
+    solenoid_controller_state_t solenoid_states = solenoid_controller_get(&solenoid_controller);
 
     valve_np1_field.value.field_value.boolean = (solenoid_states & SOLENOID_0) > 0;
     valve_np2_field.value.field_value.boolean = (solenoid_states & SOLENOID_1) > 0;
@@ -525,16 +549,16 @@ void update_solenoid_controller(void) {
     valve_ip2_field.value.field_value.boolean = (solenoid_states & SOLENOID_4) > 0;
     valve_ip3_field.value.field_value.boolean = (solenoid_states & SOLENOID_5) == 0;
 
-    update_field(&rs485_transmit, valve_np1_field);
-    update_field(&rs485_transmit, valve_np2_field);
-    update_field(&rs485_transmit, valve_np3_field);
-    update_field(&rs485_transmit, valve_np4_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_np1_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_np2_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_np3_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_np4_field);
 
     if (double_action_valve_triggered) {
-        update_field(&rs485_transmit, valve_ip1_field);
+        tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_ip1_field);
     }
 
-    update_field(&rs485_transmit, valve_ip2_field);
-    update_field(&rs485_transmit, valve_ip3_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_ip2_field);
+    tx_idx += update_field(tx_buf, TX_BUF_LEN, tx_idx, valve_ip3_field);
 #endif
 }

@@ -1,5 +1,5 @@
 #include "field.h"
-#include "uart.h"
+#include "rs485.h"
 
 #define SERIAL_PRINT_BUFFER_LEN 128
 
@@ -50,68 +50,55 @@ static valve_e parse_valve(const char* base) {
 	return NONE;
 }
 
-void update_field(uart_t* uart, field_t field) {
-    char buf[SERIAL_PRINT_BUFFER_LEN] = { 0 };
-	int len;
-
+size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field) {
     switch (field.value.field_type) {
         case FIELD_TYPE_UNSIGNED_INT:
-            len = snprintf(
-                buf,
-                SERIAL_PRINT_BUFFER_LEN,
-                "%s:u=%llu\n",
+            return (size_t)snprintf(
+                buf + buf_idx,
+                buf_len - buf_idx,
+                "%s:u=%lu\n",
                 field.name,
                 field.value.field_value.unsigned_int
             );
 
-            break;
-
         case FIELD_TYPE_SIGNED_INT:
-            len = snprintf(
-                buf,
+            return snprintf(
+                buf + buf_idx,
                 SERIAL_PRINT_BUFFER_LEN,
-                "%s:i=%lli\n",
+                "%s:i=%li\n",
                 field.name,
                 field.value.field_value.signed_int
             );
 
-            break;
-
         case FIELD_TYPE_FLOAT:
-            len = snprintf(
-                buf,
-                SERIAL_PRINT_BUFFER_LEN,
+            return snprintf(
+                buf + buf_idx,
+                buf_len - buf_idx,
                 "%s:f=%f\n",
                 field.name,
                 field.value.field_value.floating
             );
 
-            break;
-
         case FIELD_TYPE_BOOLEAN:
             if (field.value.field_value.boolean) {
-                len = snprintf(
-                    buf,
-                    SERIAL_PRINT_BUFFER_LEN,
+                return snprintf(
+                    buf + buf_idx,
+	                buf_len - buf_idx,
                     "%s:b=TRUE\n",
                     field.name
                 );
             } else {
-                len = snprintf(
-                    buf,
-                    SERIAL_PRINT_BUFFER_LEN,
+                return snprintf(
+                    buf + buf_idx,
+       	        	buf_len - buf_idx,
                     "%s:b=FALSE\n",
                     field.name
                 );
             }
-
-            break;
             
         default:
-            return;
+            return 0;
     }
-
-    uart_send(uart, buf, (size_t)len);
 }
 
 int parse_command(const char* str, command_t* command) {

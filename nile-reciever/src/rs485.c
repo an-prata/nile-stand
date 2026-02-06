@@ -41,7 +41,7 @@ size_t rs485_transact(rs485_t* rs485, const char* tx_buf, size_t tx_len, char* r
         rs485_detect_state(rs485);
     }
 
-    if (rs485->priority == RS485_SECONDARY) {
+    if (rs485->priority == RS485_PRIMARY) {
         if (rs485->control_state == RS485_WAITING) {
             recieved = rs485_recieve(rs485, rx_buf, rx_len);
 
@@ -68,7 +68,7 @@ size_t rs485_transact(rs485_t* rs485, const char* tx_buf, size_t tx_len, char* r
         return recieved;
     }
 
-    if (rs485->priority == RS485_PRIMARY) {
+    if (rs485->priority == RS485_SECONDARY) {
         if (rs485->control_state == RS485_ACTIVE) {
             if (tx_len > 0) {
                 rs485_send(rs485, tx_buf, tx_len);

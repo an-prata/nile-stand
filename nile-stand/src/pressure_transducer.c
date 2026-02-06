@@ -7,5 +7,5 @@ float pt_psi_from_volts(float volts) {
         return 0.0;
     }
 
-    return psi;
+    return volts;
 }

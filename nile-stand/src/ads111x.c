@@ -52,11 +52,11 @@ uint16_t ads111x_read(ads111x_channel_e channel) {
     ads111x_config_t state = 0;
 
     ads111x_set_channel(channel);
-
-    /* do {
+    
+    do {
         i2c_read(handle, ADS111X_REG_CONFIG, data, 2);
         state = ((uint16_t)data[0] << 8) | (uint16_t)data[1];
-    } while (!(state & ADS111X_CONFIG_START_CONVERSION)); */
+    } while (!(state & ADS111X_CONFIG_START_CONVERSION));
 
     i2c_read(handle, ADS111X_REG_CONVERSION, data, 2);
 
@@ -68,8 +68,7 @@ uint16_t ads111x_read(ads111x_channel_e channel) {
 float ads111x_read_voltage(ads111x_channel_e channel) {
     const float max = powf(2.0, 15.0);
     int16_t raw = (int16_t)ads111x_read(channel);
-    //raw = (int16_t)ads111x_read(channel);
 
-    float scaled = (float)raw / max;
+    float scaled = (float)raw / (float)max;
     return scaled * 5.0;
 }
