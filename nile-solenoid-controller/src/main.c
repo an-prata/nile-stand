@@ -23,20 +23,6 @@
 #define PIN_SIGNAL_LIGHT_2 GPIO_NUM_14
 #define PIN_SIGNAL_LIGHT_3 GPIO_NUM_15
 
-#define SOLENOID_0     0x0001
-#define SOLENOID_1     0x0002
-#define SOLENOID_2     0x0004
-#define SOLENOID_3     0x0008
-#define SOLENOID_4     0x0010
-#define SOLENOID_5     0x0020
-#define SOLENOID_6     0x0040
-#define SOLENOID_7     0x0080
-#define SOLENOID_8     0x0100
-#define E_MATCH        0x0200
-#define SIGNAL_LIGHT_1 0x0400
-#define SIGNAL_LIGHT_2 0x0800
-#define SIGNAL_LIGHT_3 0x1000
-
 #define OPEN '|'
 #define CLOSED '-'
 
@@ -45,6 +31,15 @@ static size_t solenoid_idx = 0;
 static bool state_initialized = false;
 
 static uart_t uart;
+
+typedef enum {
+    GREEN, YELLOW, RED
+} safety_state_t;
+
+/**
+ * Classify the safe-to-aproach state of the system
+ */
+safety_state_t classify_state(char state[SOLENOID_COUNT]);
 
 void app_main() {
     gpio_set_direction(PIN_SOLENOID_0, GPIO_MODE_OUTPUT);
@@ -115,8 +110,50 @@ void app_main() {
             gpio_set_level(PIN_SOLENOID_5, solenoid_set_state[5] == OPEN);
             gpio_set_level(PIN_SOLENOID_6, solenoid_set_state[6] == OPEN);
             gpio_set_level(PIN_SOLENOID_7, solenoid_set_state[7] == OPEN);
+
+            switch (classify_state(solenoid_set_state)) {
+                case GREEN:
+                    gpio_set_level(PIN_SIGNAL_LIGHT_3, 1);
+                    gpio_set_level(PIN_SIGNAL_LIGHT_2, 0);
+                    gpio_set_level(PIN_SIGNAL_LIGHT_1, 0);
+                case YELLOW:
+                    gpio_set_level(PIN_SIGNAL_LIGHT_3, 0);
+                    gpio_set_level(PIN_SIGNAL_LIGHT_2, 1);
+                    gpio_set_level(PIN_SIGNAL_LIGHT_1, 0);
+                case RED:
+                    gpio_set_level(PIN_SIGNAL_LIGHT_3, 0);
+                    gpio_set_level(PIN_SIGNAL_LIGHT_2, 0);
+                    gpio_set_level(PIN_SIGNAL_LIGHT_1, 1);
+            }
         }
 
         vTaskDelay(10);
     }
+}
+
+safety_state_t classify_state(char state[SOLENOID_COUNT]) {
+    // Failsafe state
+    if (
+        state[0] == CLOSED &&
+        state[1] == CLOSED &&
+        state[2] == OPEN &&
+        state[3] == CLOSED &&
+        state[4] == OPEN &&
+        state[5] == CLOSED &&
+        state[6] == CLOSED &&
+        state[7] == OPEN
+    ) {
+        return GREEN;
+    }
+
+    // Engine valves closed
+    if (
+        state[0] == CLOSED &&
+        state[6] == CLOSED &&
+        state[7] == OPEN
+    ) {
+        return YELLOW;
+    }
+
+    return RED;
 }
