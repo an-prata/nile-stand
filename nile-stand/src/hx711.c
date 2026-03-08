@@ -4,6 +4,7 @@
 #include <esp_timer.h>
 
 #include "hx711.h"
+#include "timing.h"
 
 void hx711_setup_pins(hx711_pins_t pins) {
 	ESP_ERROR_CHECK(gpio_set_direction(pins.clock_pin, GPIO_MODE_OUTPUT));
@@ -35,6 +36,7 @@ uint32_t hx711_read(hx711_pins_t pins) {
 
 	// Pulse puts out pin back to high, effectively reseting the state.
 	gpio_set_level(pins.clock_pin, 1);
+	value ^= 0x800000;
 	gpio_set_level(pins.clock_pin, 0);
 
 	// Right now the gain for the next read would be 128.
@@ -52,23 +54,35 @@ void hx711_read_many(gpio_num_t clock, const gpio_num_t* data_pins, uint32_t* va
 		values[i] = 0;
 	}
 
-wait:
 	for (uint8_t i = 0; i < n; i++) {
-		if (gpio_get_level(data_pins[i])) {
-			goto wait;
+		timing_marker_t start = timing_mark();
+
+		while (gpio_get_level(data_pins[i])) {
+			if (timing_time_since_us(start) / 1000 > HX711_READ_TIMEOUT_MS) {
+				break;
+			}
 		}
 	}
 
 	for (uint8_t i = 0; i < HX711_READ_BITS; i++) {
 		gpio_set_level(clock, 1);
-		gpio_set_level(clock, 0);
 		
 		for (uint8_t j = 0; j < n; j++) {
 			values[j] = values[j] << 1;
+		}
+
+		gpio_set_level(clock, 0);
+
+		for (uint8_t j = 0; j < n; j++) {
 			values[j] |= gpio_get_level(data_pins[j]);
 		}
 	}
 	
 	gpio_set_level(clock, 1);
+
+	for (uint8_t i = 0; i < n; i++) {
+		values[i] ^= 0x800000;
+	}
+	
 	gpio_set_level(clock, 0);
 }

@@ -1,25 +1,24 @@
 #ifndef SCALES_H
 #define SCALES_H
 
-#include <stddef.h>
-
 /**
  * Initialize the backing load cells of all scales.
  */
 void scales_init(void);
 
 /**
- * Update the internal record of scale readings.
+ * Retrieve the OX scale in kilograms.
  */
-void scales_update(void);
+float scales_get_ox(void);
 
 /**
- * Gets the given scale's measurement in grams.
+ * Retrieve the Fuel scale in kilograms.
  */
-float scales_get(size_t scale_num);
-
-float scales_get_ox(void);
 float scales_get_fuel(void);
+
+/**
+ * Retrieve the Fuel scale in kilograms.
+ */
 float scales_get_thrust(void);
 
 #endif  /* SCALES_H */

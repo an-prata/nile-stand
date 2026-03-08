@@ -61,8 +61,6 @@ int solenoid_controller_try_recover_state(solenoid_controller_t* solenoid_contro
         char rx_char;
         size_t recieved = uart_recieve(&solenoid_controller->uart, &rx_char, 1);
 
-        printf("Recovery recieved %d bytes\n", recieved);
-
         if (recieved == 1 && rx_char == '\n') {
             goto recover;
         }
@@ -70,7 +68,6 @@ int solenoid_controller_try_recover_state(solenoid_controller_t* solenoid_contro
         vTaskDelay(5);
     }
 
-    printf("Recovery failed to start\n");
     return 1;
 
 recover:
@@ -78,7 +75,6 @@ recover:
     size_t recieved = uart_recieve(&solenoid_controller->uart, buf, SOLENOID_COUNT);
 
     if (recieved != SOLENOID_COUNT) {
-        printf("Recovery failed with malformed data\n");
         return 1;
     }
 
@@ -96,6 +92,5 @@ recover:
     if (buf[11] == OPEN) { recovered_state |= SIGNAL_LIGHT_3; }
 
     solenoid_controller->state = recovered_state;
-    printf("Recovery succeeded!\n");
     return 0;
 }

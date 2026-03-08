@@ -9,6 +9,7 @@
 #define ADS111X_MUX_POS 12
 #define ADS111X_CONFIG_START_CONVERSION 0x8000
 #define ADS111X_CONFIG_RESET 0x0583
+#define ADS111X_SPEED 0xE0
 
 typedef uint16_t ads111x_config_t;
 
@@ -19,22 +20,25 @@ typedef enum {
 
 static i2c_master_dev_handle_t handle;
 
-static void ads111x_set_channel(ads111x_channel_e channel) {
+void ads111x_set_channel(ads111x_channel_e channel) {
     ads111x_config_t mux = 0;
 
     switch (channel) {
-        case ADS111X_CHANNEL_A0: mux = 0x40; break;
-        case ADS111X_CHANNEL_A1: mux = 0x50; break;
-        case ADS111X_CHANNEL_A2: mux = 0x60; break;
-        case ADS111X_CHANNEL_A3: mux = 0x70; break;
-        default: mux = 0x40; break;
+        case ADS111X_CHANNEL_A0: mux = 0x4000; break;
+        case ADS111X_CHANNEL_A1: mux = 0x5000; break;
+        case ADS111X_CHANNEL_A2: mux = 0x6000; break;
+        case ADS111X_CHANNEL_A3: mux = 0x7000; break;
+        default: mux = 0x4000; break;
     }
 
     ads111x_config_t config
         = mux
         | ADS111X_CONFIG_START_CONVERSION
-        | ADS111X_CONFIG_RESET;
-    i2c_write(handle, ADS111X_REG_CONFIG, (uint8_t*)(&config), sizeof(ads111x_config_t));
+        | ADS111X_CONFIG_RESET
+        | ADS111X_SPEED;
+
+    uint16_t config_swapped = (config >> 8) | (config << 8);
+    i2c_write(handle, ADS111X_REG_CONFIG, (uint8_t*)(&config_swapped), sizeof(ads111x_config_t));
 }
 
 void ads111x_device_add(void) {
@@ -54,6 +58,24 @@ uint16_t ads111x_read(ads111x_channel_e channel) {
     ads111x_set_channel(channel);
     
     do {
+    int16_t raw = (int16_t)ads111x_read_unsafe();
+        i2c_read(handle, ADS111X_REG_CONFIG, data, 2);
+        state = ((uint16_t)data[0] << 8) | (uint16_t)data[1];
+    } while (!(state & ADS111X_CONFIG_START_CONVERSION));
+
+    i2c_read(handle, ADS111X_REG_CONVERSION, data, 2);
+
+    uint16_t value = ((uint16_t)data[0] << 8) | (uint16_t)data[1];
+   
+    return value;
+}
+
+
+uint16_t ads111x_read_unsafe() {
+    uint8_t data[2] = { 0 };
+    ads111x_config_t state = 0;
+    
+    do {
         i2c_read(handle, ADS111X_REG_CONFIG, data, 2);
         state = ((uint16_t)data[0] << 8) | (uint16_t)data[1];
     } while (!(state & ADS111X_CONFIG_START_CONVERSION));
@@ -68,6 +90,15 @@ uint16_t ads111x_read(ads111x_channel_e channel) {
 float ads111x_read_voltage(ads111x_channel_e channel) {
     const float max = powf(2.0, 15.0);
     int16_t raw = (int16_t)ads111x_read(channel);
+
+    float scaled = (float)raw / (float)max;
+    return scaled * 5.0;
+}
+
+
+float ads111x_read_voltage_unsafe() {
+    const float max = powf(2.0, 15.0);
+    int16_t raw = (int16_t)ads111x_read_unsafe();
 
     float scaled = (float)raw / (float)max;
     return scaled * 5.0;

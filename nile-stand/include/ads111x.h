@@ -18,15 +18,30 @@ typedef enum {
 void ads111x_device_add(void);
 
 /**
+ * Set the current analog channel for reading, for use with unsafe functions.
+ */
+void ads111x_set_channel(ads111x_channel_e channel);
+
+/**
  * Read out a 16 bit analog conversion from the given channel. Negative values
  * do in fact represent negative voltages?
  */
 uint16_t ads111x_read(ads111x_channel_e channel);
 
 /**
+ * Read out 16 bit analog conversion from whatever the current channel is.
+ */
+uint16_t ads111x_read_unsafe();
+
+/**
  * Read out a value from the given ADS111X channel and convert it to a humanly
  * readable voltage.
  */
 float ads111x_read_voltage(ads111x_channel_e channel);
+
+/**
+ * Read voltage off of whatever the current channel is.
+ */
+float ads111x_read_voltage_unsafe();
 
 #endif  /* ADS111X_H */
