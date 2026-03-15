@@ -14,6 +14,12 @@
 #include "solenoid_controller.h"
 #include "special_procedures.h"
 
+/* 
+ * Floating offset in seconds between NP1 and IP1, positive indicates that NP1
+ * should fire first, negative indicates that IP1 should fire first.
+ */
+#define FIRING_OFFSET 0.0
+
 #define IGNITE_TIME_S 10.0
 #define SCALE_UPDATE_FREQ 10.0
 
@@ -416,9 +422,6 @@ solenoid_controller_init(
                 case COMMAND_CLOSE:
                     set_valve(command.cmd_valve, false);
                     break;
-                case COMMAND_IGNITE:
-                    set_e_match(true);
-                    break;
             }
             #endif  /* ENABLE_SOLENOID_CONTROLLER */
         }
@@ -443,6 +446,57 @@ solenoid_controller_init(
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
 void set_valve(valve_e valve, bool state) {
+    /*
+    if (valve == ENGINE && state) {
+        //special_procedure_delay_ox(&rs485, &solenoid_controller, &pressure_transducer_a0_field, &valve_np1_field);
+        special_procedure_delay_fuel(&rs485, &solenoid_controller, &pressure_transducer_a2_field, &valve_ip1_field);
+        return;
+    }
+    */
+
+    if (valve == MATCH) {
+        set_e_match(true);
+        return;
+    }
+
+    if (valve == ENGINE && state) {
+        if (FIRING_OFFSET < 0.0) {
+            solenoid_controller_open(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_close(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET * 1000 * 1000));
+            solenoid_controller_open(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        } else {
+            solenoid_controller_open(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET * 1000 * 1000));
+            solenoid_controller_open(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_close(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        }
+    } else if (valve == ENGINE && !state) {
+        if (FIRING_OFFSET < 0.0) {
+            solenoid_controller_close(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_open(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET * 1000 * 1000));
+            solenoid_controller_close(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        } else {
+            solenoid_controller_close(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET * 1000 * 1000));
+            solenoid_controller_close(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_open(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        }
+    }
+
     // Handle the weird double action valve.
     if (valve == IP1 && state) {
         solenoid_controller_open(&solenoid_controller, SOLENOID_6);
@@ -480,20 +534,20 @@ void set_valve(valve_e valve, bool state) {
     }
 }
 
+static timing_marker_t ignite_marker = 0;
+
 /**
  * Sets the e-match high (ignites it) if `state` is true. Regardless of the
  * argument this function will set the e-match low after `IGNITE_TIME_S` has
  * elapsed since the last time the match was set high.
  */
 void set_e_match(bool state) {
-    static timing_marker_t ignite_marker;
-
     if (state) {
         ignite_marker = timing_mark();
         solenoid_controller_open(&solenoid_controller, E_MATCH);
     }
 
-    if (timing_time_since_s(ignite_marker) >= IGNITE_TIME_S) {
+    if (!state && timing_time_since_s(ignite_marker) >= IGNITE_TIME_S) {
         solenoid_controller_close(&solenoid_controller, E_MATCH);
     }
 }

@@ -59,14 +59,13 @@ size_t update_field(char* buf, size_t buf_len, size_t buf_idx, field_t field);
 typedef enum {
 	COMMAND_OPEN,   // Open a valve
 	COMMAND_CLOSE,  // Close a valve
-	COMMAND_IGNITE  // Ignite the match
 } command_type_e;
 
 /**
  * A specific valve on the stand.
  */
 typedef enum {
-	NP1, NP2, NP3, NP4, IP1, IP2, IP3, NONE
+	NP1, NP2, NP3, NP4, IP1, IP2, IP3, ENGINE, MATCH, NONE
 } valve_e;
 
 /**

@@ -29,10 +29,17 @@
 void special_procedure_delay_fuel(
     rs485_t* rs485,
     solenoid_controller_t* solenoid_controller,
-    field_t* field_ipt1
+    field_t* field_ipt1,
+    field_t* field_ip1
 );
 
-void special_procedure_delay_ox(void);
+void special_procedure_delay_ox(
+    rs485_t* rs485,
+    solenoid_controller_t* solenoid_controller,
+    field_t* field_ipt1,
+    field_t* field_np1
+
+);
 
 void special_procedure_engine_ignition(void);
 

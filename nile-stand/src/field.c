@@ -5,7 +5,6 @@
 
 #define COMMAND_MSG_OPEN "OPEN"
 #define COMMAND_MSG_CLOSE "CLOSE"
-#define COMMAND_MSG_IGNITE "IGNITE"
 
 /**
  * Returns `true` if `prefix` is a prefix of `base`.
@@ -45,6 +44,14 @@ static valve_e parse_valve(const char* base) {
 
 	if (strcmp(base, "IP3") == 0) {
 		return IP3;
+	}
+
+	if (strcmp(base, "ENG") == 0) {
+		return ENGINE;
+	}
+
+	if (strcmp(base, "MCH") == 0) {
+		return MATCH;
 	}
 
 	return NONE;
@@ -128,14 +135,6 @@ int parse_command(const char* str, command_t* command) {
 		command->cmd_type = COMMAND_CLOSE;
 		command->cmd_valve = parse_valve(&str[strlen(COMMAND_MSG_CLOSE) + 1]);
 		return 0;
-	}
-
-	if (is_prefix(str, COMMAND_MSG_IGNITE)) {
-		if (strlen(str) == strlen(COMMAND_MSG_IGNITE)) {
-			command->cmd_type = COMMAND_IGNITE;
-			command->cmd_valve = NONE;
-			return 0;
-		}
 	}
 
 	return -1;
