@@ -18,7 +18,7 @@
 #define PIN_SOLENOID_5     GPIO_NUM_17
 #define PIN_SOLENOID_6     GPIO_NUM_16
 #define PIN_SOLENOID_7     GPIO_NUM_23
-#define PIN_E_MATCH        GPIO_NUM_12
+#define PIN_E_MATCH        GPIO_NUM_27
 #define PIN_SIGNAL_LIGHT_1 GPIO_NUM_13
 #define PIN_SIGNAL_LIGHT_2 GPIO_NUM_14
 #define PIN_SIGNAL_LIGHT_3 GPIO_NUM_15
@@ -110,6 +110,7 @@ void app_main() {
             gpio_set_level(PIN_SOLENOID_5, solenoid_set_state[5] == OPEN);
             gpio_set_level(PIN_SOLENOID_6, solenoid_set_state[6] == OPEN);
             gpio_set_level(PIN_SOLENOID_7, solenoid_set_state[7] == OPEN);
+            gpio_set_level(PIN_E_MATCH, solenoid_set_state[8] == OPEN);
 
             switch (classify_state(solenoid_set_state)) {
                 case GREEN:
