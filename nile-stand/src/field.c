@@ -46,8 +46,16 @@ static valve_e parse_valve(const char* base) {
 		return IP3;
 	}
 
-	if (strcmp(base, "ENG") == 0) {
-		return ENGINE;
+	if (strcmp(base, "EN1") == 0) {
+		return ENGINE1;
+	}
+
+	if (strcmp(base, "EN2") == 0) {
+		return ENGINE2;
+	}
+
+	if (strcmp(base, "EN3") == 0) {
+		return ENGINE3;
 	}
 
 	if (strcmp(base, "MCH") == 0) {

@@ -18,7 +18,9 @@
  * Floating offset in seconds between NP1 and IP1, positive indicates that NP1
  * should fire first, negative indicates that IP1 should fire first.
  */
-#define FIRING_OFFSET 0.0
+#define FIRING_OFFSET_1 0.0
+#define FIRING_OFFSET_2 0.0
+#define FIRING_OFFSET_3 0.0
 
 #define IGNITE_TIME_S 10.0
 #define SCALE_UPDATE_FREQ 10.0
@@ -459,37 +461,37 @@ void set_valve(valve_e valve, bool state) {
         return;
     }
 
-    if (valve == ENGINE && state) {
-        if (FIRING_OFFSET < 0.0) {
+    if (valve == ENGINE1 && state) {
+        if (FIRING_OFFSET_1 < 0.0) {
             solenoid_controller_open(&solenoid_controller, SOLENOID_6);
             solenoid_controller_close(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET * 1000 * 1000));
+            usleep((useconds_t)(FIRING_OFFSET_1 * 1000 * 1000));
             solenoid_controller_open(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
             return;
         } else {
             solenoid_controller_open(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET * 1000 * 1000));
+            usleep((useconds_t)(FIRING_OFFSET_1 * 1000 * 1000));
             solenoid_controller_open(&solenoid_controller, SOLENOID_6);
             solenoid_controller_close(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
             return;
         }
-    } else if (valve == ENGINE && !state) {
-        if (FIRING_OFFSET < 0.0) {
+    } else if (valve == ENGINE1 && !state) {
+        if (FIRING_OFFSET_1 < 0.0) {
             solenoid_controller_close(&solenoid_controller, SOLENOID_6);
             solenoid_controller_open(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET * 1000 * 1000));
+            usleep((useconds_t)(FIRING_OFFSET_1 * 1000 * 1000));
             solenoid_controller_close(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
             return;
         } else {
             solenoid_controller_close(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET * 1000 * 1000));
+            usleep((useconds_t)(FIRING_OFFSET_1 * 1000 * 1000));
             solenoid_controller_close(&solenoid_controller, SOLENOID_6);
             solenoid_controller_open(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
@@ -497,6 +499,82 @@ void set_valve(valve_e valve, bool state) {
         }
     }
 
+    if (valve == ENGINE2 && state) {
+        if (FIRING_OFFSET_2 < 0.0) {
+            solenoid_controller_open(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_close(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET_2 * 1000 * 1000));
+            solenoid_controller_open(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        } else {
+            solenoid_controller_open(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET_2 * 1000 * 1000));
+            solenoid_controller_open(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_close(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        }
+    } else if (valve == ENGINE2 && !state) {
+        if (FIRING_OFFSET_2 < 0.0) {
+            solenoid_controller_close(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_open(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET_2 * 1000 * 1000));
+            solenoid_controller_close(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        } else {
+            solenoid_controller_close(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET_2 * 1000 * 1000));
+            solenoid_controller_close(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_open(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        }
+    }
+
+    if (valve == ENGINE3 && state) {
+        if (FIRING_OFFSET_3 < 0.0) {
+            solenoid_controller_open(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_close(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET_3 * 1000 * 1000));
+            solenoid_controller_open(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        } else {
+            solenoid_controller_open(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET_3 * 1000 * 1000));
+            solenoid_controller_open(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_close(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        }
+    } else if (valve == ENGINE3 && !state) {
+        if (FIRING_OFFSET_3 < 0.0) {
+            solenoid_controller_close(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_open(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET_3 * 1000 * 1000));
+            solenoid_controller_close(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        } else {
+            solenoid_controller_close(&solenoid_controller, SOLENOID_0);
+            solenoid_controller_push(&solenoid_controller);
+            usleep((useconds_t)(FIRING_OFFSET_3 * 1000 * 1000));
+            solenoid_controller_close(&solenoid_controller, SOLENOID_6);
+            solenoid_controller_open(&solenoid_controller, SOLENOID_7);
+            solenoid_controller_push(&solenoid_controller);
+            return;
+        }
+    }
+    
     // Handle the weird double action valve.
     if (valve == IP1 && state) {
         solenoid_controller_open(&solenoid_controller, SOLENOID_6);
