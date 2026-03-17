@@ -58,6 +58,14 @@ static valve_e parse_valve(const char* base) {
 		return ENGINE3;
 	}
 
+	if (strcmp(base, "TMI") == 0) {
+		return TIMING_FUEL;
+	}
+
+	if (strcmp(base, "TMN") == 0) {
+		return TIMING_OX;
+	}
+
 	if (strcmp(base, "MCH") == 0) {
 		return MATCH;
 	}

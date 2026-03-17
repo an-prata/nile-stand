@@ -65,7 +65,7 @@ typedef enum {
  * A specific valve on the stand.
  */
 typedef enum {
-	NP1, NP2, NP3, NP4, IP1, IP2, IP3, ENGINE1, ENGINE2, ENGINE3, MATCH, NONE
+	NP1, NP2, NP3, NP4, IP1, IP2, IP3, ENGINE1, ENGINE2, ENGINE3, TIMING_OX, TIMING_FUEL, MATCH, NONE
 } valve_e;
 
 /**

@@ -6,8 +6,8 @@
 #define TX_BUF_LEN 1024
 #define RX_BUF_LEN 1024
 
-#define DELAY_PROCEDURE_LEN_S 15.0
-#define DELAY_PROCEDURE_OPEN_S 5.0
+#define DELAY_PROCEDURE_LEN_US (15 * 1000 * 1000)
+#define DELAY_PROCEDURE_OPEN_US (5 * 1000 * 1000)
 
 void special_procedure_delay_fuel(
     rs485_t* rs485,
@@ -45,7 +45,7 @@ void special_procedure_delay_fuel(
         uart_send(&rs485->uart, tx_buf, tx_idx);
         tx_idx = 0;
 
-        if (timing_time_since_s(start_time) > DELAY_PROCEDURE_LEN_S) {
+        if (timing_time_since_us(start_time) > DELAY_PROCEDURE_LEN_US) {
             /* Procedure finished. */
             solenoid_controller_close(solenoid_controller, SOLENOID_6);
             solenoid_controller_open(solenoid_controller, SOLENOID_7);
@@ -56,7 +56,7 @@ void special_procedure_delay_fuel(
             break;
         }
 
-        if (timing_time_since_s(start_time) > DELAY_PROCEDURE_OPEN_S && !open) {
+        if (timing_time_since_us(start_time) > DELAY_PROCEDURE_OPEN_US && !open) {
             solenoid_controller_open(solenoid_controller, SOLENOID_6);
             solenoid_controller_close(solenoid_controller, SOLENOID_7);
             solenoid_controller_push(solenoid_controller);
@@ -116,7 +116,7 @@ void special_procedure_delay_ox(
         uart_send(&rs485->uart, tx_buf, tx_idx);
         tx_idx = 0;
 
-        if (timing_time_since_s(start_time) > DELAY_PROCEDURE_LEN_S) {
+        if (timing_time_since_us(start_time) > DELAY_PROCEDURE_LEN_US) {
             /* Procedure finished. */
             solenoid_controller_close(solenoid_controller, SOLENOID_0);
             solenoid_controller_push(solenoid_controller);
@@ -126,7 +126,7 @@ void special_procedure_delay_ox(
             break;
         }
 
-        if (timing_time_since_s(start_time) > DELAY_PROCEDURE_OPEN_S && !open) {
+        if (timing_time_since_us(start_time) > DELAY_PROCEDURE_OPEN_US && !open) {
             solenoid_controller_open(solenoid_controller, SOLENOID_0);
             solenoid_controller_push(solenoid_controller);
             field_np1->value.field_value.boolean = true;
@@ -134,7 +134,7 @@ void special_procedure_delay_ox(
             open = true;
         }
 
-        /* Measure near-engine pressure on fuel side */
+        /* Measure near-engine pressure on ox side */
         field_npt1->value.field_value.floating = npt1_calibration(ads111x_read_voltage(ADS111X_CHANNEL_A0));
         sp_time_field.value.field_value.floating = timing_time_since_s(start_time);    
         sp_rate_field.value.field_value.floating = 1.0 / timing_delta_time_s();

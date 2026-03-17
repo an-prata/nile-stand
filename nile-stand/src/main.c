@@ -30,7 +30,7 @@
 #define ENABLE_SOLENOID_CONTROLLER
 #define ENABLE_RATE_TRACKING
 
-//#define CONNECT_OVER_USB
+#define CONNECT_OVER_USB
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
 static solenoid_controller_t solenoid_controller;
@@ -448,13 +448,15 @@ solenoid_controller_init(
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
 void set_valve(valve_e valve, bool state) {
-    /*
-    if (valve == ENGINE && state) {
-        //special_procedure_delay_ox(&rs485, &solenoid_controller, &pressure_transducer_a0_field, &valve_np1_field);
+    if (valve == TIMING_FUEL && state) {
         special_procedure_delay_fuel(&rs485, &solenoid_controller, &pressure_transducer_a2_field, &valve_ip1_field);
         return;
     }
-    */
+
+    if (valve == TIMING_OX && state) {
+        special_procedure_delay_ox(&rs485, &solenoid_controller, &pressure_transducer_a0_field, &valve_np1_field);
+        return;
+    }
 
     if (valve == MATCH) {
         set_e_match(true);

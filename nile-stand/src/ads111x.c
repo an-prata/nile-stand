@@ -8,6 +8,7 @@
 
 #define ADS111X_MUX_POS 12
 #define ADS111X_CONFIG_START_CONVERSION 0x8000
+#define ADS111X_CONFIG_SINGLE_SHOT 0x0100
 #define ADS111X_CONFIG_RESET 0x0583
 #define ADS111X_SPEED 0xE0
 
@@ -37,6 +38,8 @@ void ads111x_set_channel(ads111x_channel_e channel) {
         | ADS111X_CONFIG_RESET
         | ADS111X_SPEED;
 
+    config &= ~ADS111X_CONFIG_SINGLE_SHOT;
+
     uint16_t config_swapped = (config >> 8) | (config << 8);
     i2c_write(handle, ADS111X_REG_CONFIG, (uint8_t*)(&config_swapped), sizeof(ads111x_config_t));
 }
@@ -57,11 +60,14 @@ uint16_t ads111x_read(ads111x_channel_e channel) {
 
     ads111x_set_channel(channel);
     
+    /*
     do {
-    int16_t raw = (int16_t)ads111x_read_unsafe();
+        int16_t raw = (int16_t)ads111x_read_unsafe();
         i2c_read(handle, ADS111X_REG_CONFIG, data, 2);
         state = ((uint16_t)data[0] << 8) | (uint16_t)data[1];
     } while (!(state & ADS111X_CONFIG_START_CONVERSION));
+     */
+    usleep(8000);
 
     i2c_read(handle, ADS111X_REG_CONVERSION, data, 2);
 
