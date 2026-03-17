@@ -60,14 +60,7 @@ uint16_t ads111x_read(ads111x_channel_e channel) {
 
     ads111x_set_channel(channel);
     
-    /*
-    do {
-        int16_t raw = (int16_t)ads111x_read_unsafe();
-        i2c_read(handle, ADS111X_REG_CONFIG, data, 2);
-        state = ((uint16_t)data[0] << 8) | (uint16_t)data[1];
-    } while (!(state & ADS111X_CONFIG_START_CONVERSION));
-     */
-    usleep(8000);
+    usleep(5000);
 
     i2c_read(handle, ADS111X_REG_CONVERSION, data, 2);
 
@@ -81,10 +74,7 @@ uint16_t ads111x_read_unsafe() {
     uint8_t data[2] = { 0 };
     ads111x_config_t state = 0;
     
-    do {
-        i2c_read(handle, ADS111X_REG_CONFIG, data, 2);
-        state = ((uint16_t)data[0] << 8) | (uint16_t)data[1];
-    } while (!(state & ADS111X_CONFIG_START_CONVERSION));
+    usleep(1000);
 
     i2c_read(handle, ADS111X_REG_CONVERSION, data, 2);
 

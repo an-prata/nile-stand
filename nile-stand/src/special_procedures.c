@@ -38,6 +38,8 @@ void special_procedure_delay_fuel(
         }
     };
 
+    ads111x_set_channel(ADS111X_CHANNEL_A2);
+
     while (1) {
         timing_mark_loop();
 
@@ -66,7 +68,7 @@ void special_procedure_delay_fuel(
         }
 
         /* Measure near-engine pressure on fuel side */
-        field_ipt1->value.field_value.floating = ipt1_calibration(ads111x_read_voltage(ADS111X_CHANNEL_A2));
+        field_ipt1->value.field_value.floating = ipt1_calibration(ads111x_read_voltage_unsafe());
         sp_time_field.value.field_value.floating = timing_time_since_s(start_time);    
         sp_rate_field.value.field_value.floating = 1.0 / timing_delta_time_s();
 
@@ -109,6 +111,8 @@ void special_procedure_delay_ox(
         }
     };
 
+    ads111x_set_channel(ADS111X_CHANNEL_A0);
+
     while (1) {
         timing_mark_loop();
 
@@ -135,7 +139,7 @@ void special_procedure_delay_ox(
         }
 
         /* Measure near-engine pressure on ox side */
-        field_npt1->value.field_value.floating = npt1_calibration(ads111x_read_voltage(ADS111X_CHANNEL_A0));
+        field_npt1->value.field_value.floating = npt1_calibration(ads111x_read_voltage_unsafe());
         sp_time_field.value.field_value.floating = timing_time_since_s(start_time);    
         sp_rate_field.value.field_value.floating = 1.0 / timing_delta_time_s();
 

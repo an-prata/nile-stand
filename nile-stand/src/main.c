@@ -30,7 +30,7 @@
 #define ENABLE_SOLENOID_CONTROLLER
 #define ENABLE_RATE_TRACKING
 
-#define CONNECT_OVER_USB
+//#define CONNECT_OVER_USB
 
 #ifdef ENABLE_SOLENOID_CONTROLLER
 static solenoid_controller_t solenoid_controller;
