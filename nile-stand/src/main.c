@@ -18,9 +18,23 @@
  * Floating offset in seconds between NP1 and IP1, positive indicates that NP1
  * should fire first, negative indicates that IP1 should fire first.
  */
-#define FIRING_OFFSET_1 0.0
-#define FIRING_OFFSET_2 0.0
-#define FIRING_OFFSET_3 0.0
+
+// Fuel hits engine at: 5.618832
+// Ox hits engine at: 5.239993
+
+#define FIRING_OFFSET_ZERO_US (239993 - 618832)
+
+#define FIRING_OFFSET_1_US (FIRING_OFFSET_ZERO_US - 25 * 1000)
+#define FIRING_OFFSET_2_US (FIRING_OFFSET_ZERO_US - 10 * 1000)
+#define FIRING_OFFSET_3_US (FIRING_OFFSET_ZERO_US - 5 * 1000)
+
+/*
+#define FIRING_OFFSET_ZERO_US 0
+
+#define FIRING_OFFSET_1_US (FIRING_OFFSET_ZERO_US - 1 * 1000 * 1000)
+#define FIRING_OFFSET_2_US (FIRING_OFFSET_ZERO_US + 500 * 1000)
+#define FIRING_OFFSET_3_US (FIRING_OFFSET_ZERO_US - 500 * 1000)
+*/
 
 #define IGNITE_TIME_S 10.0
 #define SCALE_UPDATE_FREQ 10.0
@@ -464,36 +478,36 @@ void set_valve(valve_e valve, bool state) {
     }
 
     if (valve == ENGINE1 && state) {
-        if (FIRING_OFFSET_1 < 0.0) {
+        if (FIRING_OFFSET_1_US < 0) {
             solenoid_controller_open(&solenoid_controller, SOLENOID_6);
             solenoid_controller_close(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_1 * 1000 * 1000));
+            usleep((useconds_t)(-FIRING_OFFSET_1_US));
             solenoid_controller_open(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
             return;
         } else {
             solenoid_controller_open(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_1 * 1000 * 1000));
+            usleep((useconds_t)FIRING_OFFSET_1_US);
             solenoid_controller_open(&solenoid_controller, SOLENOID_6);
             solenoid_controller_close(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
             return;
         }
     } else if (valve == ENGINE1 && !state) {
-        if (FIRING_OFFSET_1 < 0.0) {
+        if (FIRING_OFFSET_1_US < 0) {
             solenoid_controller_close(&solenoid_controller, SOLENOID_6);
             solenoid_controller_open(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_1 * 1000 * 1000));
+            usleep((useconds_t)(-FIRING_OFFSET_1_US));
             solenoid_controller_close(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
             return;
         } else {
             solenoid_controller_close(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_1 * 1000 * 1000));
+            usleep((useconds_t)FIRING_OFFSET_1_US);
             solenoid_controller_close(&solenoid_controller, SOLENOID_6);
             solenoid_controller_open(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
@@ -502,36 +516,36 @@ void set_valve(valve_e valve, bool state) {
     }
 
     if (valve == ENGINE2 && state) {
-        if (FIRING_OFFSET_2 < 0.0) {
+        if (FIRING_OFFSET_2_US < 0.0) {
             solenoid_controller_open(&solenoid_controller, SOLENOID_6);
             solenoid_controller_close(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_2 * 1000 * 1000));
+            usleep((useconds_t)(-FIRING_OFFSET_2_US));
             solenoid_controller_open(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
             return;
         } else {
             solenoid_controller_open(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_2 * 1000 * 1000));
+            usleep((useconds_t)FIRING_OFFSET_2_US);
             solenoid_controller_open(&solenoid_controller, SOLENOID_6);
             solenoid_controller_close(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
             return;
         }
     } else if (valve == ENGINE2 && !state) {
-        if (FIRING_OFFSET_2 < 0.0) {
+        if (FIRING_OFFSET_2_US < 0.0) {
             solenoid_controller_close(&solenoid_controller, SOLENOID_6);
             solenoid_controller_open(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_2 * 1000 * 1000));
+            usleep((useconds_t)(-FIRING_OFFSET_2_US));
             solenoid_controller_close(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
             return;
         } else {
             solenoid_controller_close(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_2 * 1000 * 1000));
+            usleep((useconds_t)FIRING_OFFSET_2_US);
             solenoid_controller_close(&solenoid_controller, SOLENOID_6);
             solenoid_controller_open(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
@@ -540,36 +554,36 @@ void set_valve(valve_e valve, bool state) {
     }
 
     if (valve == ENGINE3 && state) {
-        if (FIRING_OFFSET_3 < 0.0) {
+        if (FIRING_OFFSET_3_US < 0.0) {
             solenoid_controller_open(&solenoid_controller, SOLENOID_6);
             solenoid_controller_close(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_3 * 1000 * 1000));
+            usleep((useconds_t)(-FIRING_OFFSET_3_US));
             solenoid_controller_open(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
             return;
         } else {
             solenoid_controller_open(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_3 * 1000 * 1000));
+            usleep((useconds_t)FIRING_OFFSET_3_US);
             solenoid_controller_open(&solenoid_controller, SOLENOID_6);
             solenoid_controller_close(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
             return;
         }
     } else if (valve == ENGINE3 && !state) {
-        if (FIRING_OFFSET_3 < 0.0) {
+        if (FIRING_OFFSET_3_US < 0.0) {
             solenoid_controller_close(&solenoid_controller, SOLENOID_6);
             solenoid_controller_open(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_3 * 1000 * 1000));
+            usleep((useconds_t)(-FIRING_OFFSET_3_US));
             solenoid_controller_close(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
             return;
         } else {
             solenoid_controller_close(&solenoid_controller, SOLENOID_0);
             solenoid_controller_push(&solenoid_controller);
-            usleep((useconds_t)(FIRING_OFFSET_3 * 1000 * 1000));
+            usleep((useconds_t)FIRING_OFFSET_3_US);
             solenoid_controller_close(&solenoid_controller, SOLENOID_6);
             solenoid_controller_open(&solenoid_controller, SOLENOID_7);
             solenoid_controller_push(&solenoid_controller);
